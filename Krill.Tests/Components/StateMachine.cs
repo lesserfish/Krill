@@ -275,7 +275,7 @@ public class SM {
         Assert.Equal(3, (int)sm.GetParameter("Floor")!);
 
         // The elevator finishes its current goal 
-        sm.Update();
+        sm.Update(); // Floor 2
         Assert.Equal("Stopped", sm.CurrentState!.Name);
         Assert.Equal(2, (int)sm.GetParameter("Floor")!);
 
@@ -289,6 +289,61 @@ public class SM {
         sm.Update(); // Floor 4
         Assert.Equal( "Stopped", sm.CurrentState!.Name);
         Assert.Equal(4, (int)sm.GetParameter("Floor")!);
+
+    }
+
+    class Counter : IState {
+        public Counter(Action<int> setter) : base("Counting") {
+            _setter = setter;
+            _value = 0;
+        }
+        public override void OnStart(StateMachine owner){
+            if(owner.PreviousState!.Name != "Paused"){
+                _value = 0;
+                _setter(_value);
+            }
+        }
+        public override void Update(StateMachine owner){
+            _value++;
+            _setter(_value);
+        }
+        private Action<int> _setter;
+        private int _value;
+    }
+    [Fact]
+    public void Unit5(){
+        int counter = 0;
+        Action<int> setter = (value) => {counter = value;};
+
+        StateMachine sm = new StateMachine();
+        sm.PushState(new Counter(setter));
+        sm.PushState(new StringState("Paused"), true);
+        sm.PushTransitionRule(new TransitionRule("Counting", "Paused", Trigger.Simple("Pause")));
+        sm.PushTransitionRule(new TransitionRule("Paused", "Counting", Trigger.Simple("Resume")));
+        sm.PushTransitionRule(new TransitionRule("Counting", "Counting", Trigger.Simple("Restart")));
+        Assert.Equal(0, counter);
+
+        sm.Trigger("Resume");
+        sm.Update();
+        sm.Update();
+        sm.Update();
+        Assert.Equal(3, counter);
+
+        sm.Trigger("Pause");
+        sm.Update();
+        sm.Update();
+        sm.Update();
+        Assert.Equal(3, counter);
+
+        sm.Trigger("Resume");
+        sm.Update();
+        sm.Update();
+        sm.Update();
+        Assert.Equal(6, counter);
+
+        sm.Trigger("Restart");
+        Assert.Equal(0, counter);
+
 
     }
 
