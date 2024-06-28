@@ -367,7 +367,7 @@ public class CronTab : Nez.Component {
     public CronTab(){
         _jobIds = new Dictionary<string, long>();
     }
-    public void RegisterJob(
+    public CronTab RegisterJob(
             string jobName,             
             Action jobAction,
             string decisecondRule, 
@@ -381,24 +381,27 @@ public class CronTab : Nez.Component {
         }
         long jobId = Cron.AddJob(new CronJob(jobAction, decisecondRule, secondRule, minuteRule, hourRule, useSceneTime));
         _jobIds.Add(jobName, jobId);
+        return this;
 
     }
-    public void RegisterJob(string jobName, Action jobAction, string rule, bool useSceneTime = false)
+    public CronTab RegisterJob(string jobName, Action jobAction, string rule, bool useSceneTime = false)
     {
         if(_jobIds.ContainsKey(jobName)){
             throw new ArgumentException("A cron job already exists with this name");
         }
         long jobId = Cron.AddJob(new CronJob(jobAction, rule, useSceneTime));
         _jobIds.Add(jobName, jobId);
+        return this;
 
     }
-    public void RemoveJob(string jobName){
+    public CronTab RemoveJob(string jobName){
         if(!_jobIds.ContainsKey(jobName)){
             throw new ArgumentException("");
         }
         long jobId = _jobIds[jobName];
         Cron.RemoveJob(jobId);
         _jobIds.Remove(jobName);
+        return this;
     }
 
     public override void OnRemovedFromEntity(){
