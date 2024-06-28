@@ -38,7 +38,7 @@ public class SM {
 
     }
     
-    class SimpleMusic : IState {
+    class SimpleMusic : BaseState {
         public SimpleMusic(int duration) : base("Playing") {
             _timeRemaining = duration;
             _duration = duration;
@@ -163,7 +163,7 @@ public class SM {
         Assert.Equal("Off", sm.CurrentState!.Name);
     }
     
-    class ElevatorMoving : IState {
+    class ElevatorMoving : BaseState {
         public ElevatorMoving() : base ("Moving") {}
 
         public override void OnStart(StateMachine owner){
@@ -199,11 +199,11 @@ public class SM {
         }
     }
 
-    class ElevatorRequest : ICondition {
+    class ElevatorRequest : ACondition {
         public ElevatorRequest(bool accept) {
             _accept = accept;
         }
-        public override bool Trigger(string trigger, object value, IState current_state, Dictionary<string, object> environment){
+        public override bool Trigger(string trigger, object value, BaseState current_state, Dictionary<string, object> environment){
             if(trigger == "Request"){
                 int new_request = (int)value;
                 List<int> requests = (environment["Requests"] as List<int>)!;
@@ -215,8 +215,8 @@ public class SM {
         private bool _accept;
     }
 
-    class ExistingRequest : ICondition {
-        public override bool Accept(IState current_state, Dictionary<string, object> environment){
+    class ExistingRequest : ACondition {
+        public override bool Accept(BaseState current_state, Dictionary<string, object> environment){
             List<int> requests = (environment["Requests"] as List<int>)!;
             return requests.Count > 0;
         }
@@ -292,7 +292,7 @@ public class SM {
 
     }
 
-    class Counter : IState {
+    class Counter : BaseState {
         public Counter(Action<int> setter) : base("Counting") {
             _setter = setter;
             _value = 0;
