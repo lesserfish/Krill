@@ -1,0 +1,21 @@
+
+#----------------------------- Global Properties ----------------------------#
+
+/outputDir:bin/$(Platform)
+/intermediateDir:obj/$(Platform)
+/platform:DesktopGL
+/config:
+/profile:Reach
+/compress:False
+
+#-------------------------------- References --------------------------------#
+
+/reference:../../Pipeline/bin/Debug/net6.0/Pipeline.dll
+
+#---------------------------------- Content ---------------------------------#
+
+#begin demo.lua
+/importer:
+/processor:
+/build:demo.lua
+

@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.1.303">
+      <PrivateAssets>All</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="MoonSharp" Version="2.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Nez\Nez.Portable\Nez.MG38.csproj" />
+  </ItemGroup>
+    <Target Name="PostClean" AfterTargets="Clean">
+        <Exec Command="rm -rf ./bin" />
+        <Exec Command="rm -rf ./obj" />
+        <Exec Command="rm -rf ../Nez/Nez.Portable/bin" />
+        <Exec Command="rm -rf ../Nez/Nez.Portable/obj" />
+        <Exec Command="rm -rf ../Krill.Tests/bin" />
+        <Exec Command="rm -rf ../Krill.Tests/obj" />
+    </Target>
+</Project>

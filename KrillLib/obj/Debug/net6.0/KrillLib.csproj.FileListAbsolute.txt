@@ -1,0 +1,16 @@
+/home/lesserfish/Documents/Code/Krill/KrillLib/bin/Debug/net6.0/KrillLib.deps.json
+/home/lesserfish/Documents/Code/Krill/KrillLib/bin/Debug/net6.0/KrillLib.dll
+/home/lesserfish/Documents/Code/Krill/KrillLib/bin/Debug/net6.0/KrillLib.pdb
+/home/lesserfish/Documents/Code/Krill/KrillLib/bin/Debug/net6.0/Nez.dll
+/home/lesserfish/Documents/Code/Krill/KrillLib/bin/Debug/net6.0/Nez.pdb
+/home/lesserfish/Documents/Code/Krill/KrillLib/obj/Debug/net6.0/KrillLib.csproj.AssemblyReference.cache
+/home/lesserfish/Documents/Code/Krill/KrillLib/obj/Debug/net6.0/KrillLib.GeneratedMSBuildEditorConfig.editorconfig
+/home/lesserfish/Documents/Code/Krill/KrillLib/obj/Debug/net6.0/KrillLib.AssemblyInfoInputs.cache
+/home/lesserfish/Documents/Code/Krill/KrillLib/obj/Debug/net6.0/KrillLib.AssemblyInfo.cs
+/home/lesserfish/Documents/Code/Krill/KrillLib/obj/Debug/net6.0/KrillLib.csproj.CoreCompileInputs.cache
+/home/lesserfish/Documents/Code/Krill/KrillLib/obj/Debug/net6.0/KrillLib.sourcelink.json
+/home/lesserfish/Documents/Code/Krill/KrillLib/obj/Debug/net6.0/KrillLib.csproj.CopyComplete
+/home/lesserfish/Documents/Code/Krill/KrillLib/obj/Debug/net6.0/KrillLib.dll
+/home/lesserfish/Documents/Code/Krill/KrillLib/obj/Debug/net6.0/refint/KrillLib.dll
+/home/lesserfish/Documents/Code/Krill/KrillLib/obj/Debug/net6.0/KrillLib.pdb
+/home/lesserfish/Documents/Code/Krill/KrillLib/obj/Debug/net6.0/ref/KrillLib.dll
