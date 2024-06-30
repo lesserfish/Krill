@@ -32,8 +32,8 @@ jobs:
       run: git submodule update --init --recursive
 
     - name: Restore project
-      run: dotnet restore KrillLib
+      run: dotnet restore
       
     - name: Execute unit tests
-      run: dotnet test KrillLib
+      run: dotnet test 
 
