@@ -3,6 +3,8 @@ name: .NET Core Desktop
 on:
   pull_request:
     branches: [ "main", "development" ]
+  push:
+    branches: [ "development" ]
 
 jobs:
 
@@ -30,8 +32,8 @@ jobs:
       run: git submodule update --init --recursive
 
     - name: Restore project
-      run: dotnet restore Krill
+      run: dotnet restore KrillLib
       
     - name: Execute unit tests
-      run: dotnet test Krill
+      run: dotnet test KrillLib
 
