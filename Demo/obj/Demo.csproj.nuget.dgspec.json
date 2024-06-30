@@ -138,6 +138,7 @@
               "version": "[3.8.1.303, )"
             },
             "MoonSharp": {
+              "suppressParent": "None",
               "target": "Package",
               "version": "[2.0.0, )"
             }

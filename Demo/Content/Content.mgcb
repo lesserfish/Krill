@@ -10,12 +10,11 @@
 
 #-------------------------------- References --------------------------------#
 
+/reference:../../KrillLib/bin/Debug/net6.0/MoonSharp.Interpreter.dll
 /reference:../../KrillLib/bin/Debug/net6.0/KrillLib.dll
 
 #---------------------------------- Content ---------------------------------#
 
 #begin demo.lua
-/importer:LuaImporter
-/processor:LuaProcessor
-/build:demo.lua
+/copy:demo.lua
 

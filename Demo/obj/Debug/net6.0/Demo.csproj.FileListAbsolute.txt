@@ -4,7 +4,6 @@
 /home/lesserfish/Documents/Code/Krill/Demo/obj/Debug/net6.0/Demo.AssemblyInfo.cs
 /home/lesserfish/Documents/Code/Krill/Demo/obj/Debug/net6.0/Demo.csproj.CoreCompileInputs.cache
 /home/lesserfish/Documents/Code/Krill/Demo/obj/Debug/net6.0/Demo.sourcelink.json
-/home/lesserfish/Documents/Code/Krill/Demo/bin/Debug/net6.0/Content/demo.xnb
 /home/lesserfish/Documents/Code/Krill/Demo/bin/Debug/net6.0/Demo
 /home/lesserfish/Documents/Code/Krill/Demo/bin/Debug/net6.0/Demo.deps.json
 /home/lesserfish/Documents/Code/Krill/Demo/bin/Debug/net6.0/Demo.runtimeconfig.json
@@ -35,3 +34,4 @@
 /home/lesserfish/Documents/Code/Krill/Demo/obj/Debug/net6.0/Demo.pdb
 /home/lesserfish/Documents/Code/Krill/Demo/obj/Debug/net6.0/Demo.genruntimeconfig.cache
 /home/lesserfish/Documents/Code/Krill/Demo/obj/Debug/net6.0/ref/Demo.dll
+/home/lesserfish/Documents/Code/Krill/Demo/bin/Debug/net6.0/Content/demo.lua

@@ -11,6 +11,7 @@
           "KrillLib": "1.0.0",
           "MonoGame.Content.Builder.Task": "3.8.1.303",
           "MonoGame.Framework.DesktopGL": "3.8.1.303",
+          "MoonSharp": "2.0.0",
           "Nez.Reference": "1.0.0.0"
         },
         "runtime": {

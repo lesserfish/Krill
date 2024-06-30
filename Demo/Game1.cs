@@ -1,15 +1,11 @@
-﻿using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
+﻿using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using Krill.Pipeline;
 
 namespace Demo;
 
 public class BasicScene : Nez.Scene {
     public BasicScene() : base() {}
     public override void Initialize() {
-        LuaData lua = Content.Load<LuaData>("demo");
-        System.Console.WriteLine(lua.Source);
     }
 }
 
