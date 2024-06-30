@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("KrillLib")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+63a08c62fd83d0e24220fee83100b8cdb27694b5")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0de2522dd5d994f80728e7ded5037f60de9617b0")]
 [assembly: System.Reflection.AssemblyProductAttribute("KrillLib")]
 [assembly: System.Reflection.AssemblyTitleAttribute("KrillLib")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

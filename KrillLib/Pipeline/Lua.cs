@@ -15,11 +15,11 @@ public class LuaImporter : ContentImporter<string>
 }
 
 [ContentProcessor(DisplayName = "LuaProcessor")]
-class LuaProcessor : ContentProcessor<string, LuaData>
+class LuaProcessor : ContentProcessor<string, LuaSource>
 {
-    public override LuaData Process(string input, ContentProcessorContext context)
+    public override LuaSource Process(string input, ContentProcessorContext context)
     {
-        return new LuaData{Source = input};
+        return new LuaSource(input);
     }
 }
 

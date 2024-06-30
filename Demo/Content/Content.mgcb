@@ -10,12 +10,12 @@
 
 #-------------------------------- References --------------------------------#
 
-/reference:../../Pipeline/bin/Debug/net6.0/Pipeline.dll
+/reference:../../KrillLib/bin/Debug/net6.0/KrillLib.dll
 
 #---------------------------------- Content ---------------------------------#
 
 #begin demo.lua
-/importer:
-/processor:
+/importer:LuaImporter
+/processor:LuaProcessor
 /build:demo.lua
 

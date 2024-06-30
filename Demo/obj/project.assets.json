@@ -323,7 +323,8 @@
     "net6.0": [
       "KrillLib >= 1.0.0",
       "MonoGame.Content.Builder.Task >= 3.8.1.303",
-      "MonoGame.Framework.DesktopGL >= 3.8.1.303"
+      "MonoGame.Framework.DesktopGL >= 3.8.1.303",
+      "MoonSharp >= 2.0.0"
     ]
   },
   "packageFolders": {
@@ -374,6 +375,10 @@
           "MonoGame.Framework.DesktopGL": {
             "target": "Package",
             "version": "[3.8.1.303, )"
+          },
+          "MoonSharp": {
+            "target": "Package",
+            "version": "[2.0.0, )"
           }
         },
         "imports": [

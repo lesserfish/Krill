@@ -58,7 +58,7 @@ public class CT {
         float currentTime = 60.0500f;
         float targetTime = CronSchedule.Create("0 2,8 * *").NextTrigger(currentTime); // At seconds 2 and 8, every minute
 
-        Assert.Equal(targetTime, 62.0f, targetTime);
+        Assert.Equal(62.0f, targetTime);
     }
 
     [Fact]
@@ -96,14 +96,14 @@ public class CT {
         float currentTime = 60.0500f;
         float targetTime = CronSchedule.Create("0 0 2,8 *").NextTrigger(currentTime); // At minutes 2 and 8, every hour
 
-        Assert.Equal(targetTime, 120.0f, targetTime);
+        Assert.Equal(120.0f, targetTime);
     }
     [Fact]
     public void Unit14(){
         float currentTime = 125.0500f;
         float targetTime = CronSchedule.Create("0 0 2,8 *").NextTrigger(currentTime); // At minutes 2 and 8, every hour
 
-        Assert.Equal(targetTime, 480.0f, targetTime);
+        Assert.Equal(480.0f, targetTime);
     }
 
 

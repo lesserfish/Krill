@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PipelineBuildEvent xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <SourceFile>/home/lesserfish/Documents/Code/Krill/Demo/Content/demo.lua</SourceFile>
-  <SourceTime>2024-06-29T20:15:46.8871481-03:00</SourceTime>
+  <SourceTime>2024-06-29T21:16:01.3281723-03:00</SourceTime>
   <DestFile>/home/lesserfish/Documents/Code/Krill/Demo/Content/bin/DesktopGL/Content/demo.xnb</DestFile>
-  <DestTime>2024-06-29T20:27:46.4875352-03:00</DestTime>
+  <DestTime>2024-06-29T21:28:49.9058382-03:00</DestTime>
   <Importer>LuaImporter</Importer>
-  <ImporterTime>2024-06-29T20:27:25.8159613-03:00</ImporterTime>
+  <ImporterTime>2024-06-29T21:28:46.7818917-03:00</ImporterTime>
   <Processor>LuaProcessor</Processor>
-  <ProcessorTime>2024-06-29T20:27:25.8159613-03:00</ProcessorTime>
+  <ProcessorTime>2024-06-29T21:28:46.7818917-03:00</ProcessorTime>
   <Dependencies />
   <BuildAsset />
   <BuildOutput />

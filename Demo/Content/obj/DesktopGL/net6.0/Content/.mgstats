@@ -1,2 +1,2 @@
 Source File,Dest File,Processor Type,Content Type,Source File Size,Dest File Size,Build Seconds
-"/home/lesserfish/Documents/Code/Krill/Demo/Content/demo.lua","/home/lesserfish/Documents/Code/Krill/Demo/Content/bin/DesktopGL/Content/demo.xnb","LuaProcessor","LuaData",25,236,0.0783315
+"/home/lesserfish/Documents/Code/Krill/Demo/Content/demo.lua","/home/lesserfish/Documents/Code/Krill/Demo/Content/bin/DesktopGL/Content/demo.xnb","LuaProcessor","LuaSource",0,198,0.0822484
