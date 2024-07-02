@@ -25,6 +25,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\KrillLib\KrillLib.csproj" />
+    <ProjectReference Include="..\Nez\Nez.Portable\Nez.MG38.csproj" />
   </ItemGroup>
   <Target Name="RestoreDotnetTools" BeforeTargets="Restore">
     <Message Text="Restoring dotnet tools" Importance="High" />
