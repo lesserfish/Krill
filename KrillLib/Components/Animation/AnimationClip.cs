@@ -72,7 +72,6 @@ public class AnimationClip<T> : IClip where T : struct {
         return this;
     }
     public IClip SetLoop(int loop){
-        // Todo: deal with loop == 0 case. Perhaps allow it? Idk.
         Loop = loop;
         return this;
     }

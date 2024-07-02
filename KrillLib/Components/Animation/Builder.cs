@@ -192,7 +192,6 @@ public class EventClipBuilder {
         return animation; 
     }
 
-
     int _loop;
     float _keytime;
     Action<IClip>? _onEnd;

@@ -10,6 +10,7 @@ public class Other : Nez.Entity {
         var clip = Nez.Extension.EventClipBuilder
                                 .Start()
                                 .AddKey(3, () => {System.Console.WriteLine("This is a simple action");})
+                                .AddKey(3, () => {System.Console.WriteLine("This is another simple action");})
                                 .AddKey(6, this, "PrintX")
                                 .AddKey(9, this, "IncreaseX", 5)
                                 .AddKey(12, this, "PrintX")
