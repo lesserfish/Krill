@@ -13,21 +13,7 @@ public class ClipBundle : IClip {
         }
 
         foreach(IClip clip in _clipBundle){
-            clip.SetLoop(0);
-            clip.SetOnEnd(null);
-            clip.SetOnLoop(null);
-            _endTime = Math.Max(_endTime, clip.GetDuration());
-        }
-    }
-    public ClipBundle(int loop, IClip requiredClip, params IClip[] optionalClips){
-        _clipBundle = new List<IClip>();
-        _clipBundle.Add(requiredClip);
-        foreach(IClip clip in optionalClips){
-            _clipBundle.Add(clip);
-        }
-
-        foreach(IClip clip in _clipBundle){
-            clip.SetLoop(0);
+            clip.SetLoop(-1);
             clip.SetOnEnd(null);
             clip.SetOnLoop(null);
             _endTime = Math.Max(_endTime, clip.GetDuration());
@@ -65,13 +51,13 @@ public class ClipBundle : IClip {
         Status = ClipStatus.Paused;
         return this;
     }
-    public IClip Reset(){
+    public IClip Stop(){
         // Reset all clips
         foreach(IClip clip in _clipBundle){
-            clip.Reset();
-            clip.SetLoop(0);
+            clip.Stop();
         }
-
+        
+        _time = 0;
         Status = ClipStatus.Stopped;
         return this;
     }
@@ -88,7 +74,7 @@ public class ClipBundle : IClip {
     }
     public IClip SetLoop(int loop){
         // Set All clips to loop
-        Loop = _loop;
+        Loop = loop;
         return this;
     }
     public IClip SetOnEnd(Action<IClip> action){
@@ -135,7 +121,6 @@ public class ClipBundle : IClip {
     public Action<IClip>? OnLoop;
     public int Loop;
     ClipStatus Status;
-    int _loop;
     float _time;
     float _endTime;
     List<IClip> _clipBundle;

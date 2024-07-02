@@ -12,7 +12,6 @@ public struct EventKeyframe {
 public class EventClip : IClip {
     public EventClip(List<EventKeyframe> keyframes, int loop){
         _keyframes = keyframes;
-        _loop = loop;
         Loop = loop;
         _time = 0;
     }
@@ -28,10 +27,9 @@ public class EventClip : IClip {
         Status = ClipStatus.Paused;
         return this;
     }
-    public IClip Reset(){
+    public IClip Stop(){
         Status = ClipStatus.Stopped;
         _time = 0;
-        Loop = _loop;
         return this;
     }
     public IClip Jump(float time){
@@ -91,7 +89,6 @@ public class EventClip : IClip {
     public ClipStatus Status {get; private set;}
 
 
-    int _loop;
     float _time;
     float _endTime;
     List<EventKeyframe> _keyframes;

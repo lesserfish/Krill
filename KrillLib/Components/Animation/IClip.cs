@@ -12,7 +12,7 @@ public interface IClip {
     IClip Update(float deltaTime);
     IClip Start();
     IClip Pause();
-    IClip Reset();
+    IClip Stop();
     IClip Jump(float time);
     IClip SetLoop(int loop);
     IClip SetOnEnd(Action<IClip> action);

@@ -20,7 +20,6 @@ public class AnimationClip<T> : IClip where T : struct {
     public AnimationClip(IAnimationTarget<T> target, List<AnimationSegment<T>> segments, int loop, ILerp<T> lerper){
         _target = target;
         _segments = segments;
-        _loop = loop;
         _lerper = lerper;
 
         Loop = loop;
@@ -59,10 +58,9 @@ public class AnimationClip<T> : IClip where T : struct {
         Status = ClipStatus.Paused;
         return this;
     }
-    public IClip Reset(){
+    public IClip Stop(){
         Status = ClipStatus.Stopped;
         _time = 0;
-        Loop = _loop;
         return this;
     }
     public IClip Jump(float time){
@@ -136,7 +134,6 @@ public class AnimationClip<T> : IClip where T : struct {
     public int Loop;
     public ClipStatus Status {get; private set;}
 
-    int _loop;
     int _currentSegment;
     float _time;
     float _endTime;

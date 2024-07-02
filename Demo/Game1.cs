@@ -9,17 +9,23 @@ public class Triangle : Nez.Entity {
     }
     public override void OnAddedToScene(){
         var player = new Nez.Extension.ClipPlayer();
-        var target = new Nez.Extension.PropertyTarget<Vector2>(this.Transform, "Position");
-        player.Clip = Nez.Extension.ClipBuilder<Vector2>
-                                .Start(target, new Vector2(100, 20))
+        var positionTarget = new Nez.Extension.PropertyTarget<Vector2>(this.Transform, "Position");
+        var positionClip = Nez.Extension.ClipBuilder<Vector2>
+                                .Start(positionTarget, new Vector2(100, 20))
                                 .AddKey(3, new Vector2(800, 20), type)
                                 .AddKey(6, new Vector2(800, 670), type)
                                 .AddKey(9, new Vector2(100, 670), type)
                                 .AddKey(12, new Vector2(100, 20), type)
-                                .Loop(1)
-                                .Finish()
-                                .Start();
+                                .Finish();
 
+        var rotationTarget = new Nez.Extension.PropertyTarget<float>(this.Transform, "Rotation");
+        var rotationClip = Nez.Extension.ClipBuilder<float>
+                                .Start(rotationTarget, 0)
+                                .AddKey(6,3.14f, type)
+                                .AddKey(12, 2 * 3.14f, type)
+                                .Finish();
+
+        player.Clip = new Nez.Extension.ClipBundle(positionClip, rotationClip).SetLoop(1).Start();
         AddComponent(player);
         AddComponent(new Nez.Sprites.SpriteRenderer(Scene.Content.LoadTexture("triangle")));
     }
