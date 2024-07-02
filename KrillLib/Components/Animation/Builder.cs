@@ -35,6 +35,12 @@ public class ClipBuilder<T> where T : struct {
     public static ClipBuilder<Color> Start(IAnimationTarget<Color> target, Color initialValue){
         return new ClipBuilder<Color>(target, initialValue, Lerp.Color);
     }
+    public static ClipBuilder<Quaternion> Start(IAnimationTarget<Quaternion> target, Quaternion initialValue){
+        return new ClipBuilder<Quaternion>(target, initialValue, Lerp.Quaternion);
+    }
+    public static ClipBuilder<Rectangle> Start(IAnimationTarget<Rectangle> target, Rectangle initialValue){
+        return new ClipBuilder<Rectangle>(target, initialValue, Lerp.Rectangle);
+    }
 
     public ClipBuilder<T> AddKey(float time, T value, EaseType? ease = null){
         if(time <= _keytime){
@@ -101,3 +107,5 @@ public class ClipBuilder<T> where T : struct {
 public class EventClipBuilder {
     // Todo
 }
+
+

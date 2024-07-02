@@ -66,6 +66,24 @@ public class ColorLerp : ILerp<Color> {
     }
 }
 
+public class QuaternionLerp : ILerp<Quaternion> {
+    public Quaternion Lerp(EaseType? type, Quaternion start, Quaternion end, float t){
+        if(type is null){
+            return t < 1 ? start : end;
+        }
+        return Lerps.Ease(type.Value, start, end, t, 1);
+    }
+}
+
+public class RectLerp : ILerp<Rectangle> {
+    public Rectangle Lerp(EaseType? type, Rectangle start, Rectangle end, float t){
+        if(type is null){
+            return t < 1 ? start : end;
+        }
+        return Lerps.Ease(type.Value, start, end, t, 1);
+    }
+}
+
 public class Lerp {
     public static readonly IntLerp Int = new IntLerp();
     public static readonly FloatLerp Float = new FloatLerp();
@@ -73,4 +91,6 @@ public class Lerp {
     public static readonly Vector3Lerp V3 = new Vector3Lerp();
     public static readonly Vector4Lerp V4 = new Vector4Lerp();
     public static readonly ColorLerp Color = new ColorLerp();
+    public static readonly QuaternionLerp Quaternion = new QuaternionLerp();
+    public static readonly RectLerp Rectangle = new RectLerp();
 }

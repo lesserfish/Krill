@@ -1,28 +1,76 @@
-﻿using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
-using EaseType = Nez.Tweens.EaseType;
+﻿using EaseType = Nez.Tweens.EaseType;
+using Microsoft.Xna.Framework;
 namespace Demo;
+
+
+public class Triangle : Nez.Entity {
+    public Triangle (EaseType t){
+        type = t;
+    }
+    public override void OnAddedToScene(){
+        var player = new Nez.Extension.ClipPlayer();
+        var target = new Nez.Extension.PropertyTarget<Vector2>(this.Transform, "Position");
+        player.Clip = Nez.Extension.ClipBuilder<Vector2>
+                                .Start(target, new Vector2(100, 20))
+                                .AddKey(3, new Vector2(800, 20), type)
+                                .AddKey(6, new Vector2(800, 670), type)
+                                .AddKey(9, new Vector2(100, 670), type)
+                                .AddKey(12, new Vector2(100, 20), type)
+                                .Loop(1)
+                                .Finish()
+                                .Start();
+
+        AddComponent(player);
+        AddComponent(new Nez.Sprites.SpriteRenderer(Scene.Content.LoadTexture("triangle")));
+    }
+    EaseType? type;
+}
+
+
+public class Square : Nez.Entity {
+    public Square(EaseType? Type, float Y){
+        type = Type;
+        y = Y;
+    }
+    public override void OnAddedToScene(){
+        var player = new Nez.Extension.ClipPlayer();
+        var target = new Nez.Extension.PropertyTarget<Vector2>(this.Transform, "Position");
+        player.Clip = Nez.Extension.ClipBuilder<Vector2>
+                                .Start(target, new Vector2(100, y))
+                                .AddKey(5, new Vector2(400, y), type)
+                                .AddKey(10, new Vector2(800, y), type)
+                                .Extend(12)
+                                .Loop(1)
+                                .Finish()
+                                .Start();
+
+        AddComponent(player);
+        AddComponent(new Nez.Sprites.SpriteRenderer(Scene.Content.LoadTexture("square")));
+    }
+
+    private EaseType? type;
+    private float y = 100;
+}
 
 public class BasicScene : Nez.Scene {
     public BasicScene() : base() {}
     public override void Initialize() {
-        var player = new Nez.Extension.ClipPlayer();
-        var entity = CreateEntity("entity");
-        entity.AddComponent(player);
-        var target = new Nez.Extension.PropertyTarget<int>(this, "val");
-        player.Clip = Nez.Extension.ClipBuilder<int>.Start(target, 4)
-                                .AddKey(3, 10, EaseType.Linear)
-                                .AddKey(6, 12, EaseType.Linear)
-                                .AddKey(8, 15, Nez.Tweens.EaseType.CubicIn)
-                                .Finish()
-                                .Start();
+        AddEntity(new Square(null,    1 * 50 + 20));
+        AddEntity(new Square(EaseType.Linear,      2 * 50 + 20));
+        AddEntity(new Square(EaseType.SineIn,      3 * 50 + 20));
+        AddEntity(new Square(EaseType.SineOut,     4 * 50 + 20));
+        AddEntity(new Square(EaseType.SineInOut,   5 * 50 + 20));
+        AddEntity(new Square(EaseType.QuadIn,      6 * 50 + 20));
+        AddEntity(new Square(EaseType.QuadOut,     7 * 50 + 20));
+        AddEntity(new Square(EaseType.BounceIn,    8 * 50 + 20));
+        AddEntity(new Square(EaseType.BounceOut,   9 * 50 + 20));
+        AddEntity(new Square(EaseType.BounceInOut,10 * 50 + 20));
+        AddEntity(new Square(EaseType.ElasticIn,  11 * 50 + 20));
+        AddEntity(new Square(EaseType.ElasticOut, 12 * 50 + 20));
+
+        AddEntity(new Triangle(EaseType.SineOut));
 
     }
-    public override void Update(){
-        base.Update();
-        System.Console.WriteLine(val);
-    }
-    public int val = 4;
 }
 
 public class Game1 : Nez.Core

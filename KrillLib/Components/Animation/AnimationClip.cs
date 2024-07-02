@@ -40,7 +40,7 @@ public class AnimationClip<T> : IClip where T : struct {
                 return this;
             }
             
-            if(_time > _segments[_currentSegment].End.time){
+            while(_time > _segments[_currentSegment].End.time){
                 _currentSegment++;
             }
 
@@ -105,12 +105,14 @@ public class AnimationClip<T> : IClip where T : struct {
             // Decrease Loop
             Loop = Math.Max(Loop - 1, -1);
             _time = 0;
+            _currentSegment = 0;
             Status = ClipStatus.Playing;
             if(OnLoop is not null){
                 OnLoop(this);
             }
         } else {
             _time = 0;
+            _currentSegment = 0;
             Status = ClipStatus.Stopped;
             if(OnEnd is not null){
                 OnEnd(this);
