@@ -5,8 +5,8 @@ using System.Collections.Generic;
 namespace Nez.Extension;
 
 public struct Keyframe<T> where T : struct {
-    public float time;
-    public T value;
+    public float Time;
+    public T Value;
 }
 
 public struct AnimationSegment<T> where T : struct {
@@ -25,7 +25,7 @@ public class AnimationClip<T> : IClip where T : struct {
         Loop = loop;
         _time = 0;
         _currentSegment = 0;
-        _endTime = segments.LastItem().End.time;
+        _endTime = segments.LastItem().End.Time;
     }
 
     public IClip Update(float deltaTime){
@@ -33,19 +33,19 @@ public class AnimationClip<T> : IClip where T : struct {
             _time += deltaTime;
 
             if(_time > _endTime){
-                T lastValue = _lerper.Lerp(_segments.LastItem().Ease, _segments.LastItem().Start.value, _segments.LastItem().End.value, 1);
+                T lastValue = _lerper.Lerp(_segments.LastItem().Ease, _segments.LastItem().Start.Value, _segments.LastItem().End.Value, 1);
                 _target.SetValue(lastValue);
                 _handleEnd();
                 return this;
             }
             
-            while(_time > _segments[_currentSegment].End.time){
+            while(_time > _segments[_currentSegment].End.Time){
                 _currentSegment++;
             }
 
             var segment = _segments[_currentSegment];
-            float t = (_time - segment.Start.time)/(segment.End.time - segment.Start.time);
-            T value = _lerper.Lerp(segment.Ease, segment.Start.value, segment.End.value, t);
+            float t = (_time - segment.Start.Time)/(segment.End.Time - segment.Start.Time);
+            T value = _lerper.Lerp(segment.Ease, segment.Start.Value, segment.End.Value, t);
             _target.SetValue(value);
         }
         return this;
@@ -120,7 +120,7 @@ public class AnimationClip<T> : IClip where T : struct {
     private void _calculateCurrentSegment(){
         for(int i = 0; i < _segments.Count; i++){
             var segment = _segments[i];
-            if(segment.Start.time <= _time && _time <= segment.End.time){
+            if(segment.Start.Time <= _time && _time <= segment.End.Time){
                 _currentSegment = i;
                 return;
             }

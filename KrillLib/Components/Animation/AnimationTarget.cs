@@ -49,3 +49,5 @@ public class PropertyTarget<T> : IAnimationTarget<T> where T : struct {
     private Action<T> _setter;
     private Func<T> _getter;
 }
+
+

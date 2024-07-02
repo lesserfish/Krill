@@ -46,8 +46,8 @@ public class ClipBuilder<T> where T : struct {
         if(time <= _keytime){
             throw new ArgumentException("Unordered keyframes.");
         }
-        var startKeyframe = new Keyframe<T> {time = _keytime, value = _lastValue};
-        var endKeyframe = new Keyframe<T> {time = time, value = value};
+        var startKeyframe = new Keyframe<T> {Time = _keytime, Value = _lastValue};
+        var endKeyframe = new Keyframe<T> {Time = time, Value = value};
         var segment = new AnimationSegment<T>{Start = startKeyframe, End = endKeyframe, Ease = ease};
 
         _segments.Add(segment);
@@ -62,8 +62,8 @@ public class ClipBuilder<T> where T : struct {
         if(time <= _keytime){
             throw new ArgumentException("Unordered keyframes.");
         }
-        var startKeyframe = new Keyframe<T> {time = _keytime, value = _lastValue};
-        var endKeyframe = new Keyframe<T> {time = time, value = _lastValue};
+        var startKeyframe = new Keyframe<T> {Time = _keytime, Value = _lastValue};
+        var endKeyframe = new Keyframe<T> {Time = time, Value = _lastValue};
         var segment = new AnimationSegment<T>{Start = startKeyframe, End = endKeyframe, Ease = null};
 
         _segments.Add(segment);
@@ -103,9 +103,102 @@ public class ClipBuilder<T> where T : struct {
 
 }
 
+public class ClipBuilder{
+    public static ClipBuilder<int> Start(IAnimationTarget<int> target, int initialValue){
+        return ClipBuilder<int>.Start(target, initialValue);
+    }
+    public static ClipBuilder<float> Start(IAnimationTarget<float> target, float initialValue){
+        return ClipBuilder<float>.Start(target, initialValue);
+    }
+    public static ClipBuilder<Vector2> Start(IAnimationTarget<Vector2> target, Vector2 initialValue){
+        return ClipBuilder<Vector2>.Start(target, initialValue);
+    }
+    public static ClipBuilder<Vector3> Start(IAnimationTarget<Vector3> target, Vector3 initialValue){
+        return ClipBuilder<Vector3>.Start(target, initialValue);
+    }
+    public static ClipBuilder<Vector4> Start(IAnimationTarget<Vector4> target, Vector4 initialValue){
+        return ClipBuilder<Vector4>.Start(target, initialValue);
+    }
+    public static ClipBuilder<Color> Start(IAnimationTarget<Color> target, Color initialValue){
+        return ClipBuilder<Color>.Start(target, initialValue);
+    }
+    public static ClipBuilder<Quaternion> Start(IAnimationTarget<Quaternion> target, Quaternion initialValue){
+        return ClipBuilder<Quaternion>.Start(target, initialValue);
+    }
+    public static ClipBuilder<Rectangle> Start(IAnimationTarget<Rectangle> target, Rectangle initialValue){
+        return ClipBuilder<Rectangle>.Start(target, initialValue);
+    }
+
+}
 
 public class EventClipBuilder {
-    // Todo
+    private EventClipBuilder(){
+        _keyframes = new List<EventKeyframe>();
+        _keytime = 0;
+        _loop = 0; // A single loop
+    }
+    public static EventClipBuilder Start(){
+        return new EventClipBuilder();
+    }
+    public EventClipBuilder AddKey(float time, Action action){
+        if(time < _keytime){
+            throw new ArgumentException("Unordered keyframes.");
+        }
+        IEvent ev = new SimpleEvent(action);
+        var keyframe = new EventKeyframe(time, ev);
+        _keyframes.Add(keyframe);
+        _keytime = time;
+        return this;
+    }
+    public EventClipBuilder AddKey(float time, object target, string method, params object[] parameters){
+        if(time < _keytime){
+            throw new ArgumentException("Unordered keyframes.");
+        }
+        IEvent ev = new MethodEvent(target, method, parameters);
+        var keyframe = new EventKeyframe(time, ev);
+        _keyframes.Add(keyframe);
+        _keytime = time;
+        return this;
+    }
+    public EventClipBuilder Extend(float time){
+        if(time < _keytime){
+            throw new ArgumentException("Unordered keyframes.");
+        }
+
+        IEvent ev = new SimpleEvent(() => {});
+        var keyframe = new EventKeyframe(time, ev);
+        _keyframes.Add(keyframe);
+        _keytime = time;
+        return this;
+    }
+    public EventClipBuilder Loop(int loop = -1){
+        _loop = loop;
+        return this;
+    }
+    public EventClipBuilder OnEnd(Action<IClip> onEnd){
+        _onEnd = onEnd;
+        return this;
+    }
+    public EventClipBuilder OnLoop(Action<IClip> onLoop){
+        _onLoop = onLoop;
+        return this;
+    }
+
+    public EventClip Finish(){
+        EventClip animation = new EventClip(_keyframes);
+        animation.Loop = _loop;
+        animation.OnEnd = _onEnd;
+        animation.OnLoop = _onLoop;
+        return animation; 
+    }
+
+
+    int _loop;
+    float _keytime;
+    Action<IClip>? _onEnd;
+    Action<IClip>? _onLoop;
+    List<EventKeyframe> _keyframes; 
+
 }
 
 
