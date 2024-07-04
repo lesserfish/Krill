@@ -57,10 +57,18 @@ public class TransitionRule {
 
 }
 
-public class StateMachine : Nez.Component, Nez.IUpdatable {
+public class StateMachine {
     public StateMachine(){
         _states = new Dictionary<string, BaseState>();
-        _parameters = new Dictionary<string, object>();
+        Parameters = new Dictionary<string, object>();
+        _transitions = new Dictionary<string, List<TransitionRule>>();
+        CurrentState = null;
+        PreviousState = null;
+    }
+
+    public StateMachine(Dictionary<string, object> parameters){
+        _states = new Dictionary<string, BaseState>();
+        Parameters = parameters;
         _transitions = new Dictionary<string, List<TransitionRule>>();
         CurrentState = null;
         PreviousState = null;
@@ -102,10 +110,10 @@ public class StateMachine : Nez.Component, Nez.IUpdatable {
         if(value == null){
             throw new ArgumentException("Attempted to add a null parameter to state machine", name);
         }
-        if(_parameters.ContainsKey(name)){
+        if(Parameters.ContainsKey(name)){
             throw new ArgumentException("State machine already has a parameter with name '{0}'", name);
         }
-        _parameters.Add(name, value);
+        Parameters.Add(name, value);
 
         return this;
     }
@@ -115,18 +123,18 @@ public class StateMachine : Nez.Component, Nez.IUpdatable {
             throw new ArgumentException("Attempted to add a null parameter to state machine", name);
         }
 
-        if(_parameters.ContainsKey(name)){
-            _parameters[name] = value;
+        if(Parameters.ContainsKey(name)){
+            Parameters[name] = value;
         } else {
-            _parameters.Add(name, value);
+            Parameters.Add(name, value);
         }
 
         return this;
     }
 
     public object? GetParameter(string name){
-        if(_parameters.ContainsKey(name)){
-            return _parameters[name];
+        if(Parameters.ContainsKey(name)){
+            return Parameters[name];
         }
         return null;
     }
@@ -150,13 +158,13 @@ public class StateMachine : Nez.Component, Nez.IUpdatable {
         return this;
     }
 
-    public void Update() {
+    public StateMachine Update() {
         if(CurrentState == null){
             throw new ArgumentException("Current state is null");
         }
         CurrentState.Update(this);
         foreach (TransitionRule transition in _transitions[CurrentState.Name]){
-            if(transition.Accept(CurrentState, _parameters)){
+            if(transition.Accept(CurrentState, Parameters)){
                 string target = transition.Target;
 
                 if(!_states.ContainsKey(transition.Target)){
@@ -171,9 +179,10 @@ public class StateMachine : Nez.Component, Nez.IUpdatable {
                 PreviousState.OnExit(this);
                 CurrentState.OnStart(this);
 
-                return;
+                return this;
             }
         }
+        return this;
     }
 
     public StateMachine Trigger() {
@@ -181,7 +190,7 @@ public class StateMachine : Nez.Component, Nez.IUpdatable {
             throw new ArgumentException("Current state is null");
         }
         foreach (TransitionRule transition in _transitions[CurrentState.Name]){
-            if(transition.Accept(CurrentState, _parameters)){
+            if(transition.Accept(CurrentState, Parameters)){
                 string target = transition.Target;
 
                 if(!_states.ContainsKey(transition.Target)){
@@ -206,7 +215,7 @@ public class StateMachine : Nez.Component, Nez.IUpdatable {
             throw new NullReferenceException("Current state is null");
         }
         foreach (TransitionRule transition in _transitions[CurrentState.Name]){
-            if(transition.Trigger(trigger, CurrentState, _parameters)){
+            if(transition.Trigger(trigger, CurrentState, Parameters)){
                 string target = transition.Target;
 
                 if(!_states.ContainsKey(transition.Target)){
@@ -232,7 +241,7 @@ public class StateMachine : Nez.Component, Nez.IUpdatable {
             throw new NullReferenceException("Current state is null");
         }
         foreach (TransitionRule transition in _transitions[CurrentState.Name]){
-            if(transition.Trigger(trigger, value,CurrentState, _parameters)){
+            if(transition.Trigger(trigger, value,CurrentState, Parameters)){
                 string target = transition.Target;
 
                 if(!_states.ContainsKey(transition.Target)){
@@ -256,7 +265,7 @@ public class StateMachine : Nez.Component, Nez.IUpdatable {
 
     public StateMachine Clear(){
         _states.Clear();
-        _parameters.Clear();
+        Parameters.Clear();
         _transitions.Clear();
         CurrentState = null;
         return this;
@@ -277,15 +286,27 @@ public class StateMachine : Nez.Component, Nez.IUpdatable {
         return this;
     }
 
-    public override void OnRemovedFromEntity(){
-        Clear();
-    }
-
     public BaseState? CurrentState {get; private set;}
     public BaseState? PreviousState {get; private set;}
     private Dictionary<string, BaseState> _states;
-    private Dictionary<string, object> _parameters;
+    public Dictionary<string, object> Parameters;
     private Dictionary<string, List<TransitionRule>> _transitions;
+}
+
+public class SM : Nez.Component, IUpdatable {
+    public SM(Dictionary<string, object> parameters){
+        Machine = new StateMachine(parameters);
+    }
+    public SM(){
+        Machine = new StateMachine();
+    }
+    public override void OnRemovedFromEntity(){
+        Machine.Clear();
+    }
+    public void Update(){
+        Machine.Update();
+    }
+    public StateMachine Machine;
 }
 
 // States

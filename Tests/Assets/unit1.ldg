@@ -1,0 +1,34 @@
+[0]{
+    return 3
+}
+
+[1]{
+    local str = "This is a much more complex function!"
+    -- It even has some comments in it
+    return 7 + 11
+}
+
+
+[2]{
+    local str = "This one uses global variables"
+    local num = 4
+    return global_value + num
+}
+
+[3]
+{
+    local str = "This one has special formatting in it"
+    -- It also returns a string
+    return "Ahoy"
+}
+
+[4]
+{
+    local str = "This one is called as a couroutine"
+    -- It first returns an int
+    coroutine.yield(3)
+    -- And then returns a float
+    coroutine.yield(3.14)
+    -- It finally returns a string
+    return "end"
+}
