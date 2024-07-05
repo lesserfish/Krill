@@ -3,8 +3,8 @@ using System.Collections.Generic;
 namespace Nez.Extension;
 
 
-public class DialogueParseException : System.Exception {
-    public DialogueParseException(string message, string content, int errorCode) : base (message){
+public class LDGException : System.Exception {
+    public LDGException(string message, string content, int errorCode) : base (message){
         Content = content;
         ErrorCode = errorCode;
     }
@@ -19,9 +19,16 @@ enum ParseState {
     ExpectingSource,
     SourceContent,
 }
-public static class LDG {
+public class LDG {
+    
+    public LDG(Dictionary<int, string> entries){
+        Entries = entries;
+        if(!entries.ContainsKey(0)){
+            throw new LDGException("LDG needs to contain an entry of id 0.", "", 8);
+        }
+    }
 
-    public static Dictionary<int, string> FromString(string source){
+    public static LDG FromString(string source){
 
         Dictionary<int, string> entries = new Dictionary<int, string>();
 
@@ -46,7 +53,7 @@ public static class LDG {
                 }
 
                 else {
-                    throw new DialogueParseException("Could not parse dialogue. Was expecting start of code block.", memory, 1);
+                    throw new LDGException("Could not parse dialogue. Was expecting start of code block.", memory, 1);
                 }
             }
 
@@ -58,7 +65,7 @@ public static class LDG {
                         state = ParseState.ExpectingSource;
                         continue;
                     } catch (System.Exception) {
-                        throw new DialogueParseException("Could not parse code. Was expecting an integer.", memory, 2);
+                        throw new LDGException("Could not parse code. Was expecting an integer.", memory, 2);
                     }
                 }
                 else {
@@ -75,7 +82,7 @@ public static class LDG {
                     continue;
                 }
                 else {
-                    throw new DialogueParseException("Could not parse dialogue. Was expecting start of source block.", memory, 3);
+                    throw new LDGException("Could not parse dialogue. Was expecting start of source block.", memory, 3);
                 }
             }
             else if(state == ParseState.SourceContent){
@@ -91,7 +98,7 @@ public static class LDG {
                 }
                 else if(c == '}' && bracketCount == 0){
                     if(entries.ContainsKey(code)){
-                        throw new DialogueParseException("Repeated code names in dialogue file.", memory, 4);
+                        throw new LDGException("Repeated code names in dialogue file.", memory, 4);
                     }
 
                     string parsedSource = "return function()\n" + buffer + "\nend";
@@ -112,18 +119,20 @@ public static class LDG {
 
         if(state != ParseState.ExpectingCode){
             if(state == ParseState.ExpectingSource){
-                throw new DialogueParseException("Code block with no accompanying source block.", memory, 5);
+                throw new LDGException("Code block with no accompanying source block.", memory, 5);
             }
             else if(state == ParseState.Code){
-                throw new DialogueParseException("Unfinished code block.", memory, 6);
+                throw new LDGException("Unfinished code block.", memory, 6);
             }
             else if(state == ParseState.SourceContent){
-                throw new DialogueParseException("Unfinished source block.", memory, 7);
+                throw new LDGException("Unfinished source block.", memory, 7);
             }
         }
 
-        return entries;
+        return new LDG(entries);
     }
+
+    public Dictionary<int, string> Entries;
 }
 
 

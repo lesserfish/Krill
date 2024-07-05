@@ -44,11 +44,11 @@ public class Triangle : Nez.Entity {
                                 .AddKey(9, new Vector2(100, 670), type)
                                 .AddKey(12, new Vector2(100, 20), type)
                                 .Finish();
-
+        
         var rotationTarget = new Nez.Extension.PropertyTarget<float>(this.Transform, "Rotation");
         var rotationClip = Nez.Extension.ClipBuilder
                                 .Start(rotationTarget, 0.0f)
-                                .AddKey(6,3.14f, type)
+                                .AddKey(6, 3.14f, type)
                                 .AddKey(12, 2 * 3.14f, type)
                                 .Finish();
 
@@ -85,8 +85,8 @@ public class Square : Nez.Entity {
     private float y = 100;
 }
 
-public class BasicScene : Nez.Scene {
-    public BasicScene() : base() {}
+public class AnimationScene : Nez.Scene {
+    public AnimationScene() : base() {}
     public override void Initialize() {
         AddEntity(new Square(null,    1 * 50 + 20));
         AddEntity(new Square(EaseType.Linear,      2 * 50 + 20));
@@ -104,14 +104,6 @@ public class BasicScene : Nez.Scene {
         AddEntity(new Triangle(EaseType.SineOut));
 
         AddEntity(new Other());
-
     }
 }
 
-public class Game1 : Nez.Core
-{
-    protected override void Initialize() {
-        base.Initialize();
-        Scene = new BasicScene();
-    }
-}

@@ -1,0 +1,10 @@
+[0]{
+}
+[1]{
+    Say("My name is not johnny!")
+    Sleep(3)
+    SayMore(" It is also not jack...")
+    Sleep(1)
+    Say("It is James")
+    Stop()
+}

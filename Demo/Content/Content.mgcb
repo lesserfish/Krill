@@ -15,8 +15,14 @@
 
 #---------------------------------- Content ---------------------------------#
 
+#begin ../../KrillLib/Assets/init_dialogue.lua
+/copy:../../KrillLib/Assets/init_dialogue.lua;init_dialogue.lua
+
 #begin demo.lua
 /copy:demo.lua
+
+#begin dialogue_example.ldg
+/copy:dialogue_example.ldg
 
 #begin square.png
 /importer:TextureImporter
