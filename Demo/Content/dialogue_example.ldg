@@ -1,10 +1,19 @@
-[0]{
-}
+[0]{}
 [1]{
+    SetTextSpeed(10)
     Say("My name is not johnny!")
-    Sleep(3)
+    Sleep(2)
+    Goto(2)
+}
+[2] {
+    SetTextSpeed(8)
     SayMore(" It is also not jack...")
-    Sleep(1)
-    Say("It is James")
+    Sleep(4)
+    Goto(3)
+}
+[3] {
+    local age = 7 + 4
+    SetTextSpeed(10)
+    Say("It is James and I have " .. age .. " years of age")
     Stop()
 }

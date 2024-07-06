@@ -24,6 +24,19 @@ public enum DialogueState {
 
 public class DialogueManager : Nez.Component, IUpdatable {
 
+    static class Triggers {
+        public static string GOTO_RENDERING_TEXT = "GOTO_RENDERING_TEXT";
+        public static string GOTO_STOPPED = "GOTO_STOPPED";
+        public static string GOTO_SLEEP = "GOTO_SLEEP";
+        public static string GOTO_WAITING_OK = "GOTO_WAITING_OK";
+        public static string GOTO_WAITING_REPLY = "GOTO_WAITING_REPLY";
+        public static string RECEIVED_OK = "RECEIVED_OK";
+        public static string RECEIVED_REPLY = "RECEIVED_REPLY";
+        public static string RENDER_COMPLETE = "RENDER_COMPLETE";
+        public static string RENDER_COMPLETE_OK = "RENDER_COMPLETE_OK";
+        public static string SLEEP_COMPLETE = "SLEEP_COMPLETE";
+    }
+
     enum InteractionMessage {
         Clear=0,
         Say,
@@ -65,12 +78,11 @@ public class DialogueManager : Nez.Component, IUpdatable {
                 }
 
                 if(visibility == text.Length){
+                    _manager._visibility = visibility;
                     if(_manager.PauseAfterSay){
-                        _manager._visibility = visibility;
-                        owner.Trigger("RENDER_COMPLETE_OK");
+                        owner.Trigger(Triggers.RENDER_COMPLETE_OK);
                     } else {
-                        _manager._visibility = visibility;
-                        owner.Trigger("RENDER_COMPLETE");
+                        owner.Trigger(Triggers.RENDER_COMPLETE);
                     }
                 }
                 _manager._timeBuffer = 0;
@@ -84,7 +96,7 @@ public class DialogueManager : Nez.Component, IUpdatable {
         public override void Update(StateMachine owner){
             object? oSleepTime = owner.GetParameter("sleepTime");
             if(oSleepTime is not float){
-                owner.Trigger("SLEEP_COMPLETE");
+                owner.Trigger(Triggers.SLEEP_COMPLETE);
                 return;
             }
 
@@ -92,7 +104,7 @@ public class DialogueManager : Nez.Component, IUpdatable {
             sleepTime -= Nez.Time.DeltaTime;
 
             if(sleepTime < 0){
-                owner.Trigger("SLEEP_COMPLETE");
+                owner.Trigger(Triggers.SLEEP_COMPLETE);
             }
 
             owner.UpdateParameter("sleepTime", sleepTime);
@@ -106,7 +118,7 @@ public class DialogueManager : Nez.Component, IUpdatable {
         public override void Update(StateMachine owner){
             if(_manager._coroutine.Type != DataType.Thread){
                 _manager._coroutine = DynValue.Nil;
-                owner.Trigger("GOTO_STOPPED");
+                owner.Trigger(Triggers.GOTO_STOPPED);
                 return;
             }
 
@@ -128,7 +140,7 @@ public class DialogueManager : Nez.Component, IUpdatable {
             }
             else if(output.Type == DataType.Nil){
                 if(_manager.AllowEmptyMessages){
-                    owner.Trigger("GOTO_STOPPED");
+                    owner.Trigger(Triggers.GOTO_STOPPED);
                     return;
                 } else {
                     throw new DialogueException("Received unknown interaction message from Lua.", 2);
@@ -148,17 +160,17 @@ public class DialogueManager : Nez.Component, IUpdatable {
                         throw new DialogueException("Expected message from Lua.", 4);
                     }
                     _manager._text += arg.String;
-                    owner.Trigger("GOTO_RENDERING_TEXT");
+                    owner.Trigger(Triggers.GOTO_RENDERING_TEXT);
                     break;
                 case InteractionMessage.Pause:
-                    owner.Trigger("GOTO_WAITING_OK");
+                    owner.Trigger(Triggers.GOTO_WAITING_OK);
                     break;
                 case InteractionMessage.Sleep:
                     if(arg.Type != DataType.Number){
                         throw new DialogueException("Expected number from Lua.", 5);
                     }
                     owner.UpdateParameter("sleepTime", (float) arg.Number);
-                    owner.Trigger("GOTO_SLEEP");
+                    owner.Trigger(Triggers.GOTO_SLEEP);
                     break;
                 case InteractionMessage.Ask:
                     if(arg.Type != DataType.Table){
@@ -181,7 +193,7 @@ public class DialogueManager : Nez.Component, IUpdatable {
                         
                         _manager.Options.Add((int) key.Number, value.String);
                     }
-                    owner.Trigger("GOTO_WAITING_REPLY");
+                    owner.Trigger(Triggers.GOTO_WAITING_REPLY);
                     break;
                 case InteractionMessage.Goto:
                     if(arg.Type != DataType.Number){
@@ -201,7 +213,7 @@ public class DialogueManager : Nez.Component, IUpdatable {
                     _manager.Custom(arg);
                     break;
                 case InteractionMessage.Stop:
-                    owner.Trigger("GOTO_STOPPED");
+                    owner.Trigger(Triggers.GOTO_STOPPED);
                     break;
             }
 
@@ -238,61 +250,61 @@ public class DialogueManager : Nez.Component, IUpdatable {
         _sm.PushTransitionRule(new TransitionRule(
                             DialogueState.RunningLua.ToString(), 
                             DialogueState.RenderingText.ToString(),
-                            new SimpleTrigger("GOTO_RENDERING_TEXT")));
+                            new SimpleTrigger(Triggers.GOTO_RENDERING_TEXT)));
 
         // RunninggLua -> Stopped
         _sm.PushTransitionRule(new TransitionRule(
                             DialogueState.RunningLua.ToString(), 
                             DialogueState.Stopped.ToString(),
-                            new SimpleTrigger("GOTO_STOPPED")));
+                            new SimpleTrigger(Triggers.GOTO_STOPPED)));
 
         // RunningLua -> Sleep
         _sm.PushTransitionRule(new TransitionRule(
                             DialogueState.RunningLua.ToString(), 
                             DialogueState.Sleeping.ToString(),
-                            new SimpleTrigger("GOTO_SLEEP")));
+                            new SimpleTrigger(Triggers.GOTO_SLEEP)));
 
         // RunninggLua -> WaitingOk
         _sm.PushTransitionRule(new TransitionRule(
                             DialogueState.RunningLua.ToString(), 
                             DialogueState.WaitingOk.ToString(),
-                            new SimpleTrigger("GOTO_WAITING_OK")));
+                            new SimpleTrigger(Triggers.GOTO_WAITING_OK)));
 
         // RunninggLua -> WaitingReply
         _sm.PushTransitionRule(new TransitionRule(
                             DialogueState.RunningLua.ToString(), 
                             DialogueState.WaitingReply.ToString(),
-                            new SimpleTrigger("GOTO_WAITING_REPLY")));
+                            new SimpleTrigger(Triggers.GOTO_WAITING_REPLY)));
         
         // RenderingText -> RunningLua
         _sm.PushTransitionRule(new TransitionRule(
                                 DialogueState.RenderingText.ToString(),
                                 DialogueState.RunningLua.ToString(),
-                                new SimpleTrigger("RENDER_COMPLETE")));
+                                new SimpleTrigger(Triggers.RENDER_COMPLETE)));
 
         // RenderingText -> WaitingOk
         _sm.PushTransitionRule(new TransitionRule(
                                 DialogueState.RenderingText.ToString(),
                                 DialogueState.WaitingOk.ToString(),
-                                new SimpleTrigger("RENDER_COMPLETE_OK")));
+                                new SimpleTrigger(Triggers.RENDER_COMPLETE_OK)));
 
         // WaitingOK -> RunningLua
         _sm.PushTransitionRule(new TransitionRule(
                                 DialogueState.WaitingOk.ToString(),
                                 DialogueState.RunningLua.ToString(),
-                                new SimpleTrigger("RECEIVED_OK")));
+                                new SimpleTrigger(Triggers.RECEIVED_OK)));
 
         // WaitingReply -> RunningLua
         _sm.PushTransitionRule(new TransitionRule(
                                 DialogueState.WaitingReply.ToString(),
                                 DialogueState.RunningLua.ToString(),
-                                new SimpleTrigger("RECEIVED_REPLY")));
+                                new SimpleTrigger(Triggers.RECEIVED_REPLY)));
 
         // Sleeping -> RunningLua
         _sm.PushTransitionRule(new TransitionRule(
                                 DialogueState.Sleeping.ToString(),
                                 DialogueState.RunningLua.ToString(),
-                                new SimpleTrigger("SLEEP_COMPLETE")));
+                                new SimpleTrigger(Triggers.SLEEP_COMPLETE)));
 
     }
     protected virtual void Custom(DynValue argument){}
@@ -302,21 +314,21 @@ public class DialogueManager : Nez.Component, IUpdatable {
         DialogueState currentState = State;
         if(currentState == DialogueState.RenderingText){
             _visibility = _text.Length;
-            _sm.Trigger("RENDER_COMPLETE");
+            _sm.Trigger(Triggers.RENDER_COMPLETE);
         }
         else if(currentState == DialogueState.Sleeping){
             _sm.UpdateParameter("sleepTime", 0.0f);
-            _sm.Trigger("SLEEP_COMPLETE");
+            _sm.Trigger(Triggers.SLEEP_COMPLETE);
         }
     }
 
     public void Ok(){
-        _sm.Trigger("RECEIVED_OK");
+        _sm.Trigger(Triggers.RECEIVED_OK);
     }
 
     public void Reply(int reply){
         _lua.Globals["__bridge_value"] = reply;
-        _sm.Trigger("RECEIVED_REPLY");
+        _sm.Trigger(Triggers.RECEIVED_REPLY);
     }
 
     public void Goto(int code){
