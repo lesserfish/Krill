@@ -32,19 +32,17 @@ public class DialogueEntity : Nez.Entity {
         base.Update();
         string content = dialogue.Text;
 
-        /*var dialogueState = dialogue.State;*/
-        /*if(dialogueState == DialogueState.Stopped){*/
-        /*    content += " <Stopped>";*/
-        /*} else if (dialogueState == DialogueState.WaitingOk) {*/
-        /*    content += " <Ok>";*/
-        /*} else if (dialogueState == DialogueState.Sleeping) {*/
-        /*    content += " <Sleep>";*/
-        /*} else if (dialogueState == DialogueState.WaitingReply) {*/
-        /*    content += " <Reply>";*/
-        /*} else if (dialogueState == DialogueState.RunningLua) {*/
-        /*    content += " <Lua>";*/
-        /*}*/
-        
+        var dialogueState = dialogue.State;
+        if(dialogueState == DialogueState.Stopped){
+            content += " <Stopped>";
+        } else if (dialogueState == DialogueState.WaitingOk) {
+            content += " <Ok>";
+        } else if (dialogueState == DialogueState.Sleeping) {
+            content += " <Sleep>";
+        } else if (dialogueState == DialogueState.WaitingReply) {
+            content += " <Reply>";
+        }
+
         text.SetText(content);
     }
 

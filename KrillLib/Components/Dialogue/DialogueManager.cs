@@ -42,21 +42,40 @@ public class DialogueManager : Nez.Component, IUpdatable {
             _manager._timeBuffer = 0;
         }
         public override void Update(StateMachine owner){
+            string text = _manager._text;
+            long visibility = _manager._visibility;
+
             _manager._timeBuffer += Nez.Time.DeltaTime;
 
             if(_manager._timeBuffer > (1.0f/_manager.TextSpeed)){
-                _manager._visibility = System.Math.Min(_manager._visibility + 1, _manager._text.Length);
+                
+                // Increase one character of visible text
+                visibility = System.Math.Min(visibility + 1, text.Length);
 
-                if(_manager._visibility == _manager._text.Length){
+                // Skip all characters following a '\' character until a space or a EOL is found
+                if(visibility < text.Length && _manager.SkipSpecial){
+                    if(text[(int)visibility] == '\\'){
+
+                        while(visibility < text.Length){
+                            if(text[(int) visibility++] == ' '){
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if(visibility == text.Length){
                     if(_manager.PauseAfterSay){
+                        _manager._visibility = visibility;
                         owner.Trigger("RENDER_COMPLETE_OK");
                     } else {
+                        _manager._visibility = visibility;
                         owner.Trigger("RENDER_COMPLETE");
                     }
                 }
                 _manager._timeBuffer = 0;
             }
-
+            _manager._visibility = visibility;
         }
         private DialogueManager _manager;
     }
@@ -169,12 +188,15 @@ public class DialogueManager : Nez.Component, IUpdatable {
                         throw new DialogueException("Expected number from Lua.", 10);
                     }
                     int code = (int) arg.Number;
+                    if(code == 0){
+                        throw new DialogueException("Jumping to code 0 is not allowed.", 11);
+                    }
                     DynValue function = _manager._lua.DoString(_manager._ldg.Entries[code]);
                     _manager._coroutine = _manager._lua.CreateCoroutine(function);
                     break;
                 case InteractionMessage.Custom:
                     if(arg.Type != DataType.Table){
-                        throw new DialogueException("Expected table from Lua.", 11);
+                        throw new DialogueException("Expected table from Lua.", 12);
                     }
                     _manager.Custom(arg);
                     break;
@@ -203,11 +225,11 @@ public class DialogueManager : Nez.Component, IUpdatable {
         // Set up State Machine
         //
         // States
-        _sm.PushState(new RenderingText(this));
         _sm.PushState(new SimpleState<DialogueState>(DialogueState.WaitingOk));
         _sm.PushState(new SimpleState<DialogueState>(DialogueState.WaitingReply));
-        _sm.PushState(new Sleeping());
         _sm.PushState(new SimpleState<DialogueState>(DialogueState.Stopped));
+        _sm.PushState(new Sleeping());
+        _sm.PushState(new RenderingText(this));
         _sm.PushState(new RunningLua(this), true);
 
         // Transitions
@@ -298,6 +320,9 @@ public class DialogueManager : Nez.Component, IUpdatable {
     }
 
     public void Goto(int code){
+        if(code == 0){
+            throw new DialogueException("Jumping to code 0 is not allowed.", 13);
+        }
         DynValue function = _lua.DoString(_ldg.Entries[code]);
         _coroutine = _lua.CreateCoroutine(function);
         _sm.ForceState(DialogueState.RunningLua.ToString());
@@ -333,12 +358,12 @@ public class DialogueManager : Nez.Component, IUpdatable {
         get {
             BaseState? currentState = _sm.CurrentState;
             if(currentState is null){
-                throw new DialogueException("For some reason, DialogueState is null. This should never happen.", 12);
+                throw new DialogueException("For some reason, DialogueState is null. This should never happen.", 14);
             }
             if(currentState is SimpleState<DialogueState>){
                 return (currentState as SimpleState<DialogueState>)!.State;
             } else {
-                throw new DialogueException("For some reason, DialogueState is not the correct type. This should never happen.", 13);
+                throw new DialogueException("For some reason, DialogueState is not the correct type. This should never happen.", 15);
             }
         }
         private set {}
@@ -346,6 +371,7 @@ public class DialogueManager : Nez.Component, IUpdatable {
     
     public bool AllowEmptyMessages = true;
     public bool PauseAfterSay = true;
+    public bool SkipSpecial = false;
     public int InitialCode = 1;
     public float TextSpeed = 1;
 
@@ -358,6 +384,7 @@ public class DialogueManager : Nez.Component, IUpdatable {
         _lua.Globals["__set_text_speed"] = (Action<float>) _setTextSpeed;
         _lua.Globals["__set_pause_after_say"] = (Action<bool>) _setPauseAfterSay;
         _lua.Globals["__set_initial_code"] = (Action<int>) _setInitialCode;
+        _lua.Globals["__set_skip_special"] = (Action<bool>) _setSkipSpecial;
 
         DynValue function = _lua.DoString(_ldg.Entries[InitialCode]);
         _coroutine = _lua.CreateCoroutine(function);
@@ -377,6 +404,9 @@ public class DialogueManager : Nez.Component, IUpdatable {
     }
     private void _setInitialCode(int code){
         InitialCode = code;
+    }
+    private void _setSkipSpecial(bool value){
+        SkipSpecial = value;
     }
 
     // Private members

@@ -55,3 +55,7 @@ end
 function SetInitialCode(code)
     __set_initial_code(code)
 end
+
+function SetSkipSpecial(bool)
+    __set_skip_special(bool)
+end
