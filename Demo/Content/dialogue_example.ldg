@@ -38,4 +38,5 @@
 }
 [6]{
     Say("Ok! Bye byee!")
+    Stop()
 }
