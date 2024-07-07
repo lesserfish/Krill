@@ -19,7 +19,8 @@ public enum DialogueState {
     WaitingReply,
     Sleeping,
     Stopped,
-    RunningLua
+    RunningLua,
+    Paused
 };
 
 public class DialogueManager : Nez.Component, IUpdatable {
@@ -30,11 +31,13 @@ public class DialogueManager : Nez.Component, IUpdatable {
         public static string GOTO_SLEEP = "GOTO_SLEEP";
         public static string GOTO_WAITING_OK = "GOTO_WAITING_OK";
         public static string GOTO_WAITING_REPLY = "GOTO_WAITING_REPLY";
+        public static string GOTO_PAUSED = "GOTO_PAUSED";
         public static string RECEIVED_OK = "RECEIVED_OK";
         public static string RECEIVED_REPLY = "RECEIVED_REPLY";
         public static string RENDER_COMPLETE = "RENDER_COMPLETE";
         public static string RENDER_COMPLETE_OK = "RENDER_COMPLETE_OK";
         public static string SLEEP_COMPLETE = "SLEEP_COMPLETE";
+        public static string RESUME = "RESUME";
     }
 
     enum InteractionMessage {
@@ -109,6 +112,38 @@ public class DialogueManager : Nez.Component, IUpdatable {
 
             owner.UpdateParameter("sleepTime", sleepTime);
         }
+    }
+    
+    class Paused : SimpleState<DialogueState> {
+        public Paused(DialogueManager manager) : base(DialogueState.Paused){
+            _manager = manager;
+        }
+        public override void OnStart(StateMachine owner){
+            BaseState? previousState = owner.PreviousState;
+            if(previousState is not SimpleState<DialogueState>){
+                throw new DialogueException("For some reason, DialogueState is not the correct type. This should never happen.", 15);
+            } else {
+                _manager._previousState = (previousState as SimpleState<DialogueState>)!.State;
+            }
+        }
+        DialogueManager _manager;
+    }
+    class ResumeCondition : ACondition {
+        public ResumeCondition(DialogueManager manager, DialogueState state){
+            _manager = manager;
+            _state = state;
+        }
+        public override bool Trigger(string trigger, BaseState current_state, Dictionary<string, object> environment){
+            if(trigger == Triggers.RESUME){
+                if(_manager._previousState == _state){
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        DialogueState _state;
+        DialogueManager _manager;
     }
 
     class RunningLua : SimpleState<DialogueState> {
@@ -228,6 +263,7 @@ public class DialogueManager : Nez.Component, IUpdatable {
         _coroutine = DynValue.Nil;
         _ldg = LDG.FromString(ldgSource);
         _text = "";
+        _previousState = DialogueState.Stopped;
         Options = new Dictionary<int, string>();
         Text = "";
 
@@ -241,6 +277,7 @@ public class DialogueManager : Nez.Component, IUpdatable {
         _sm.PushState(new SimpleState<DialogueState>(DialogueState.WaitingReply));
         _sm.PushState(new SimpleState<DialogueState>(DialogueState.Stopped));
         _sm.PushState(new Sleeping());
+        _sm.PushState(new Paused(this));
         _sm.PushState(new RenderingText(this));
         _sm.PushState(new RunningLua(this), true);
 
@@ -305,6 +342,57 @@ public class DialogueManager : Nez.Component, IUpdatable {
                                 DialogueState.Sleeping.ToString(),
                                 DialogueState.RunningLua.ToString(),
                                 new SimpleTrigger(Triggers.SLEEP_COMPLETE)));
+        
+        // RenderingText -> Paused
+        _sm.PushTransitionRule(new TransitionRule(
+                                DialogueState.RenderingText.ToString(),
+                                DialogueState.Paused.ToString(),
+                                new SimpleTrigger(Triggers.GOTO_PAUSED)));
+
+        _sm.PushTransitionRule(new TransitionRule(
+                                DialogueState.WaitingOk.ToString(),
+                                DialogueState.Paused.ToString(),
+                                new SimpleTrigger(Triggers.GOTO_PAUSED)));
+
+        _sm.PushTransitionRule(new TransitionRule(
+                                DialogueState.WaitingReply.ToString(),
+                                DialogueState.Paused.ToString(),
+                                new SimpleTrigger(Triggers.GOTO_PAUSED)));
+
+        _sm.PushTransitionRule(new TransitionRule(
+                                DialogueState.Sleeping.ToString(),
+                                DialogueState.Paused.ToString(),
+                                new SimpleTrigger(Triggers.GOTO_PAUSED)));
+
+        _sm.PushTransitionRule(new TransitionRule(
+                                DialogueState.RunningLua.ToString(),
+                                DialogueState.Paused.ToString(),
+                                new SimpleTrigger(Triggers.GOTO_PAUSED)));
+
+        _sm.PushTransitionRule(new TransitionRule(
+                                    DialogueState.Paused.ToString(),
+                                    DialogueState.RenderingText.ToString(),
+                                    new ResumeCondition(this, DialogueState.RenderingText)));
+
+        _sm.PushTransitionRule(new TransitionRule(
+                                    DialogueState.Paused.ToString(),
+                                    DialogueState.WaitingOk.ToString(),
+                                    new ResumeCondition(this, DialogueState.WaitingOk)));
+
+        _sm.PushTransitionRule(new TransitionRule(
+                                    DialogueState.Paused.ToString(),
+                                    DialogueState.WaitingReply.ToString(),
+                                    new ResumeCondition(this, DialogueState.WaitingReply)));
+
+        _sm.PushTransitionRule(new TransitionRule(
+                                    DialogueState.Paused.ToString(),
+                                    DialogueState.Sleeping.ToString(),
+                                    new ResumeCondition(this, DialogueState.Sleeping)));
+
+        _sm.PushTransitionRule(new TransitionRule(
+                                    DialogueState.Paused.ToString(),
+                                    DialogueState.RunningLua.ToString(),
+                                    new ResumeCondition(this, DialogueState.RunningLua)));
 
     }
     protected virtual void Custom(DynValue argument){}
@@ -344,6 +432,14 @@ public class DialogueManager : Nez.Component, IUpdatable {
         Goto(InitialCode);
     }
 
+    public void Pause(){
+        _sm.Trigger(Triggers.GOTO_PAUSED);
+    }
+
+    public void Resume(){
+        _sm.Trigger(Triggers.RESUME);
+    }
+
     public void HotReload(string ldgSource){
         _ldg = LDG.FromString(ldgSource);
     }
@@ -364,6 +460,11 @@ public class DialogueManager : Nez.Component, IUpdatable {
             return _text.Substring(0, length);
         }
         private set {}
+    }
+    
+    public Script Lua {
+        get {return _lua;}
+        private set {_lua = value;}
     }
 
     public DialogueState State {
@@ -401,6 +502,11 @@ public class DialogueManager : Nez.Component, IUpdatable {
         DynValue function = _lua.DoString(_ldg.Entries[InitialCode]);
         _coroutine = _lua.CreateCoroutine(function);
     }
+
+    public override void OnRemovedFromEntity(){
+        _sm.Clear();
+        _lua = new Script();
+    }
     
     public void Update(){
         _sm.Update();
@@ -427,6 +533,7 @@ public class DialogueManager : Nez.Component, IUpdatable {
     private DynValue _coroutine;
     private Script _lua;
     private StateMachine _sm;
+    private DialogueState _previousState;
 
     private float _timeBuffer = 0;
     private long _visibility;
