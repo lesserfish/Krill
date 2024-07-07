@@ -15,5 +15,27 @@
     local age = 7 + 4
     SetTextSpeed(10)
     Say("It is James and I have " .. age .. " years of age")
+    Sleep(4)
+    Goto(4)
+}
+[4] {
+    Say("Do you want me to count to 10?")
+    local options = {"Yes", "No"}
+    local response = Ask(options)
+    if (response == 1)
+    then
+        Goto(5)
+    else
+        Goto(6)
+    end
+}
+[5] {
+    Say("I'm going to count to 10: ")
+    SetTextSpeed(1)
+    SetSkipSpecial(true)
+    SayMore("123456\\c=0 7890")
     Stop()
+}
+[6]{
+    Say("Ok! Bye byee!")
 }
