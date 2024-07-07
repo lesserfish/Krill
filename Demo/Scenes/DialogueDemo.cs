@@ -43,12 +43,16 @@ public class DialogueEntity : Nez.Entity {
                             HandleKeyDown(Keys.Space);
                         if(Nez.Input.IsKeyPressed(Keys.Enter))
                             HandleKeyDown(Keys.Enter);
+                        if(Nez.Input.IsKeyPressed(Keys.D1))
+                            HandleKeyDown(Keys.D1);
+                        if(Nez.Input.IsKeyPressed(Keys.D2))
+                            HandleKeyDown(Keys.D2);
+
                         RenderText();
                     }));
         
     }
     void HandleKeyDown(Keys key){
-        System.Console.WriteLine("Received keydown {0}, key");
         if(key == Keys.Space){
             if(dialogue.State == DialogueState.Paused){
                 dialogue.Resume();
@@ -59,24 +63,24 @@ public class DialogueEntity : Nez.Entity {
         if(key == Keys.Enter){
             dialogue.Hurry();
         }
+        if(key == Keys.D1){
+            dialogue.Reply(1);
+        }
+        if(key == Keys.D2){
+            dialogue.Reply(2);
+        }
     }
     void RenderText(){
-        string content = dialogue.Text;
-
-        var dialogueState = dialogue.State;
-        if(dialogueState == DialogueState.Stopped){
-            content += " <Stopped>";
-        } else if (dialogueState == DialogueState.WaitingOk) {
-            content += " <Ok>";
-        } else if (dialogueState == DialogueState.Sleeping) {
-            content += " <Sleep>";
-        } else if (dialogueState == DialogueState.WaitingReply) {
-            content += " <Reply>";
-        }else if (dialogueState == DialogueState.Paused) {
-            content += " <Paused>";
+        DialogueState state = dialogue.State;
+        if(state == DialogueState.WaitingReply){
+            string content = dialogue.Text;
+            foreach(var (entry, str) in dialogue.Options){
+                content += "\n" + entry.ToString() + ") " + str;
+            }
+            text.SetText(content);
+        } else {
+            text.SetText(dialogue.Text);
         }
-
-        text.SetText(content);
     }
 
     private DialogueManager dialogue;
