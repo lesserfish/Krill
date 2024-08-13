@@ -8,27 +8,26 @@ import Control.Monad(when)
 import Control.Monad.State
 import Data.Word
 import Data.Bits
-import K6502.Types (K6502(kInterface))
 
 -- Getters and Setters
 
 mapIP :: (Word16 -> Word16) -> StateT K6502 IO ()
-mapIP f = modify (\k -> k{kRegisters = (kRegisters k){ip = f . ip . kRegisters $ k}})
+mapIP f = modify (\k -> k{kRegisters = (kRegisters k){rIP = f . rIP . kRegisters $ k}})
 
 mapSP :: (Word8 -> Word8) -> StateT K6502 IO ()
-mapSP f = modify (\k -> k{kRegisters = (kRegisters k){sp = f . sp . kRegisters $ k}})
+mapSP f = modify (\k -> k{kRegisters = (kRegisters k){rSP = f . rSP . kRegisters $ k}})
 
 mapAX :: (Word8 -> Word8) -> StateT K6502 IO ()
-mapAX f = modify (\k -> k{kRegisters = (kRegisters k){ax = f . ax . kRegisters $ k}})
+mapAX f = modify (\k -> k{kRegisters = (kRegisters k){rAX = f . rAX . kRegisters $ k}})
 
 mapIX :: (Word8 -> Word8) -> StateT K6502 IO ()
-mapIX f = modify (\k -> k{kRegisters = (kRegisters k){ix = f . ix . kRegisters $ k}})
+mapIX f = modify (\k -> k{kRegisters = (kRegisters k){rIX = f . rIX . kRegisters $ k}})
 
 mapIY :: (Word8 -> Word8) -> StateT K6502 IO ()
-mapIY f = modify (\k -> k{kRegisters = (kRegisters k){iy = f . iy . kRegisters $ k}})
+mapIY f = modify (\k -> k{kRegisters = (kRegisters k){rIY = f . rIY . kRegisters $ k}})
 
 mapFS :: (Word8 -> Word8) -> StateT K6502 IO ()
-mapFS f = modify (\k -> k{kRegisters = (kRegisters k){fs = f . fs . kRegisters $ k}})
+mapFS f = modify (\k -> k{kRegisters = (kRegisters k){rFS = f . rFS . kRegisters $ k}})
 
 
 
@@ -78,25 +77,25 @@ setFSIf condition v = when condition $ setFS v
 
 
 getIP :: StateT K6502 IO Word16 
-getIP = gets (ip . kRegisters)
+getIP = gets (rIP . kRegisters)
 
 
 getSP :: StateT K6502 IO Word8 
-getSP = gets (sp . kRegisters)
+getSP = gets (rSP . kRegisters)
 
 
 getAX :: StateT K6502 IO Word8 
-getAX = gets (ax . kRegisters)
+getAX = gets (rAX . kRegisters)
 
 
 getIX :: StateT K6502 IO Word8 
-getIX = gets (ix . kRegisters) 
+getIX = gets (rIX . kRegisters) 
 
 getIY :: StateT K6502 IO Word8 
-getIY = gets (iy . kRegisters) 
+getIY = gets (rIY . kRegisters) 
 
 getFS :: StateT K6502 IO Word8 
-getFS = gets (fs . kRegisters)
+getFS = gets (rFS . kRegisters)
 
 
 offsetIP :: Word16 -> StateT K6502 IO Word16

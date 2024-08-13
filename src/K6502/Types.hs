@@ -17,12 +17,12 @@ data Interface = Interface
     }
 
 data Registers = Registers
-    { ip :: !Word16 -- Program Counter
-    , sp :: !Word8  -- Stack Pointer
-    , ax :: !Word8  -- Accumulator
-    , ix :: !Word8  -- X Register
-    , iy :: !Word8  -- Y Register
-    , fs :: !Word8  -- Flag Status
+    { rIP :: !Word16 -- Program Counter
+    , rSP :: !Word8  -- Stack Pointer
+    , rAX :: !Word8  -- Accumulator
+    , rIX :: !Word8  -- X Register
+    , rIY :: !Word8  -- Y Register
+    , rFS :: !Word8  -- Flag Status
     }
 
 data Context = Context
