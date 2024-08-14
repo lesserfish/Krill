@@ -22,6 +22,39 @@ reset = do
     resetClock
     resetCycles
 
+irq :: StateT (K6502, Interface) IO ()
+irq = do
+    interrupt_disable <- getFlag INTERRUPT_DISABLE
+    if interrupt_disable
+        then do
+            return ()
+        else do
+            pc <- getIP
+            let (pchb, pclb) = splitBytes pc
+            ps <- getFS
+            writeStack pchb
+            writeStack pclb
+            writeStack (setBit ps 0)
+            irq_lb <- readByte 0xFFFE
+            irq_hb <- readByte 0xFFFF
+            let jmp_addr = joinBytes irq_hb irq_lb
+            setIP jmp_addr
+            setFlag INTERRUPT_DISABLE True 
+
+nmi :: StateT (K6502, Interface) IO ()
+nmi = do
+    pc <- getIP
+    let (pchb, pclb) = splitBytes pc
+    ps <- getFS
+    writeStack pchb
+    writeStack pclb
+    writeStack (setBit ps 0)
+    nmi_lb <- readByte 0xFFFA
+    nmi_hb <- readByte 0xFFFB
+    let jmp_addr = joinBytes nmi_hb nmi_lb
+    setIP jmp_addr
+    setFlag INTERRUPT_DISABLE True 
+
 -- Addressing modes
 getAddr :: ADDR_MODE -> StateT (K6502, Interface) IO Word16
 getAddr IMPLICIT    = return 0   -- Implicit does not require getAddr

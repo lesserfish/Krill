@@ -1,13 +1,15 @@
 module K6502.API ( 
     new,
     tick,
-    reset
+    reset,
+    nmi,
+    irq
 )where
 
 import K6502.Types
 import K6502.Internal
 import K6502.Execution
-import qualified K6502.Instructions (reset)
+import qualified K6502.Instructions (reset, nmi, irq)
 
 import Control.Monad.State
 -- Creation
@@ -37,3 +39,9 @@ tick' = do
 
 reset :: Interface -> K6502 -> IO K6502
 reset interface k = fst <$> execStateT K6502.Instructions.reset (k, interface)
+
+nmi :: Interface -> K6502 -> IO K6502
+nmi interface k = fst <$> execStateT K6502.Instructions.nmi (k, interface)
+
+irq :: Interface -> K6502 -> IO K6502
+irq interface k = fst <$> execStateT K6502.Instructions.irq (k, interface)
