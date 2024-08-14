@@ -1,8 +1,13 @@
-module K6502.API where
+module K6502.API ( 
+    new,
+    tick,
+    reset
+)where
 
 import K6502.Types
 import K6502.Internal
 import K6502.Execution
+import qualified K6502.Instructions (reset)
 
 import Control.Monad.State
 -- Creation
@@ -29,3 +34,6 @@ tick' = do
             offsetCycles (-1) -- Fetch uses one cycle of the instruction
             execute opcode
             setComplete True
+
+reset :: Interface -> K6502 -> IO K6502
+reset interface k = fst <$> execStateT K6502.Instructions.reset (k, interface)

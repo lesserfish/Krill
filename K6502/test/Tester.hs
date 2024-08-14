@@ -7,7 +7,6 @@ import Data.IORef
 import qualified Data.Map as M
 import K6502
 import Loader
-import K6502 (K6502(kContext), Context (ctxDecimalEnabled))
 import Control.Monad (unless)
 
 data MiniPC = MiniPC {
