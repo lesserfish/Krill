@@ -7,14 +7,14 @@ import K6502.Instructions
 import Control.Monad.State
 import Data.Word
 
-fetch :: StateT K6502 IO Word8
+fetch :: StateT (K6502, Interface) IO Word8
 fetch = do
     pc <- offsetIP 1
     opcode <- readByte pc
     setSuperInstruction False
     return opcode
 
-execute :: Word8 -> StateT K6502 IO ()
+execute :: Word8 -> StateT (K6502, Interface) IO ()
 execute 0x69 = do
     offsetCycles 2
     opADC IMMEDIATE
@@ -491,6 +491,5 @@ execute 0x9A = do
 execute 0x98 = do
     offsetCycles 2
     opTYA IMPLICIT
-execute opcode = return ()
---error (show opcode ++ ": Unknown opcode") -- TODO: Add error log to Context perhaps?
+execute _ = return ()
 

@@ -7,16 +7,18 @@ import K6502.Execution
 import Control.Monad.State
 -- Creation
 
-new :: Interface -> K6502
+new :: K6502
 new = K6502 reg 0 0 ctx where
     reg = Registers 0 0 0 0 0 0
     ctx = Context False False False
 
 -- Setters / Getters
 
+tick :: Interface -> K6502 -> IO K6502
+tick interface k = fst <$> execStateT tick' (k, interface)
 
-tick :: StateT K6502 IO ()
-tick = do
+tick' :: StateT (K6502, Interface) IO ()
+tick' = do
     incClock
     c <- getCycles
     if c > 0

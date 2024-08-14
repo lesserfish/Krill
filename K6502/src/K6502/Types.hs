@@ -63,5 +63,4 @@ data K6502 = K6502
     , kClock :: !Int
     , kCycles :: !Int
     , kContext :: !Context
-    , kInterface :: !Interface
     }

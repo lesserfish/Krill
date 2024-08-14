@@ -8,7 +8,7 @@ import Control.Monad.State
 import Data.Word
 import Data.Bits
 
-reset ::StateT K6502 IO () 
+reset ::StateT (K6502, Interface) IO () 
 reset = do
     irq_lb <- readByte 0xFFFC 
     irq_hb <- readByte 0xFFFD 
@@ -22,16 +22,155 @@ reset = do
     resetClock
     resetCycles
 
-opADC ::ADDR_MODE -> StateT K6502 IO ()
+-- Addressing modes
+getAddr :: ADDR_MODE -> StateT (K6502, Interface) IO Word16
+getAddr IMPLICIT    = return 0   -- Implicit does not require getAddr
+getAddr ACCUMULATOR = return 0   -- Accumulator does not require getAddr
+getAddr IMMEDIATE = do
+    offsetIP 1 
+
+getAddr ZEROPAGE = do
+    operand <- offsetIP 1
+    lb <- readByte operand
+    return $ joinBytes 0x00 lb
+
+getAddr ZEROPAGE_X = do
+    operand <- offsetIP 1
+    x <- getIX
+    lb <- readByte operand
+    return $ joinBytes 0x00 (lb + x)
+
+
+getAddr ZEROPAGE_Y = do
+    operand <- offsetIP 1
+    y <- getIY
+    lb <- readByte operand
+    return $ joinBytes 0x00 (lb + y)
+
+getAddr RELATIVE = do
+    pc <- offsetIP 1
+    offset <- asU16 <$> readByte pc
+    let relativeOffset = if b7 offset then 0xFF00 .|. offset else offset
+    address <- pageCrossSum pc relativeOffset
+    return $ address + 1
+
+getAddr ABSOLUTE = do
+    operand <- offsetIP 2
+    lb <- readByte operand 
+    hb <- readByte (operand + 1)
+    return $ joinBytes hb lb
+
+getAddr ABSOLUTE_X = do
+    operand <- offsetIP 2
+    x <- getIX
+    lb <- readByte operand
+    hb <- readByte (operand + 1)
+    pageCrossSum (joinBytes hb lb) (joinBytes 0x00 x)
+
+
+getAddr ABSOLUTE_Y = do
+    operand <- offsetIP 2
+    y <- getIY
+    lb <- readByte operand
+    hb <- readByte (operand + 1)
+    pageCrossSum (joinBytes hb lb) (joinBytes 0x00 y)
+
+
+getAddr INDIRECT = do
+    operand <- offsetIP 2
+    let (pchb, pclb) = splitBytes operand
+
+    addr_lb <- readByte (joinBytes pchb pclb)
+    addr_hb <- readByte (joinBytes pchb pclb + 1)
+    let addr1 = joinBytes addr_hb addr_lb
+    lb <- readByte addr1 -- Get the actual address from that location
+    let (hb1, lb1) = splitBytes addr1
+    hb <- readByte (joinBytes hb1 (lb1 + 1))
+    return $ joinBytes hb lb
+
+getAddr INDIRECT_X = do
+    operand <- offsetIP 1
+    table_start <- readByte operand
+    table_offset <- getIX
+    let table_addr = table_start + table_offset 
+    lb <- readByte (joinBytes 0x00 table_addr)
+    hb <- readByte (joinBytes 0x00 (table_addr + 1))
+    return $ joinBytes hb lb
+
+getAddr INDIRECT_Y = do
+    operand <- offsetIP 1
+    table_lb <- readByte operand
+    addr_lb <- readByte $ joinBytes 0x00 table_lb
+    addr_hb <- readByte $ joinBytes 0x00 (table_lb + 1)
+    let address = joinBytes addr_hb addr_lb
+    y <- getIY
+    pageCrossSum address (joinBytes 0x00 y)
+
+
+-- Instruction Set
+
+adcOverflow :: Bool -> Bool -> Bool -> Bool
+adcOverflow x y r = xor r x && xor r y
+
+opADC ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opADC IMPLICIT = error "Operation ADC does not support IMPLICIT addressing mode"
 opADC ACCUMULATOR = error "Operation ADC does not support ACCUMULATOR addressing mode"
 opADC ZEROPAGE_Y = error "Operation ADC does not support ZEROPAGE_Y addressing mode"
 opADC RELATIVE = error "Operation ADC does not support RELATIVE addressing mode"
 opADC INDIRECT = error "Operation ADC does not support INDIRECT addressing mode"
 opADC addr_mode = do
-    error "TODO"
+    decimalEnabled <- getDecimalEnabled
+    decimalMode <- getFlag DECIMAL_MODE
+    if decimalEnabled && decimalMode then opADCDec addr_mode else opADCReg addr_mode
 
-opAND ::ADDR_MODE -> StateT K6502 IO ()
+-- Regular ADC
+opADCReg :: ADDR_MODE -> StateT (K6502, Interface) IO ()
+opADCReg addr_mode = do
+    address <- getAddr addr_mode
+    ax <- asU16 <$> getAX
+    byte <- asU16 <$> readByte address
+    carry_flag <- getFlag CARRY
+    let carry = if carry_flag then 1 else 0
+    let sum = ax + byte + carry
+    setFlag CARRY (sum > 0xFF)
+    setFlag ZERO (sum .&. 0xFF == 0)
+    setFlag NEGATIVE (b7 sum)
+    setFlag OVERFLOW (adcOverflow (b7 ax) (b7 byte) (b7 sum))
+    setAX $ asU8 sum
+
+-- Decimal mode ADC
+opADCDec :: ADDR_MODE -> StateT (K6502, Interface) IO ()
+opADCDec addr_mode = do
+    address <- getAddr addr_mode
+    ax <- asU16 <$> getAX
+    byte <- asU16 <$> readByte address
+    carry_flag <- getFlag CARRY
+    let carry = if carry_flag then 1 else 0
+
+    let a1 = ax .&. 0x0F
+    let b1 = byte .&. 0x0F
+    let c1 = carry
+    let s1 = a1 + b1 + c1
+    let o1 = s1 >= 0x0A
+
+    let a2 = ax .&. 0xF0
+    let b2 = byte .&. 0xF0
+    let c2 = if o1 then 0x10 else 0x00
+    let s2 = a2 + b2 + c2
+    let o2 = s2 >= 0xA0
+
+    let lsd = if o1 then (s1 + 0x06) .&. 0x0F else s1 .&. 0x0F
+    let msd = if o2 then (s2 + 0x60) .&. 0xF0 else s2 .&. 0xF0
+
+    let sum = msd + lsd
+
+    setFlag CARRY o2
+    setFlag ZERO ((ax + byte + carry) .&. 0xFF == 0)
+    setFlag NEGATIVE (b7 s2)
+    setFlag OVERFLOW (adcOverflow (b7 ax) (b7 byte) (b7 s2))
+    setAX $ asU8 sum
+
+opAND ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opAND IMPLICIT = error "Operation AND does not support IMPLICIT addressing mode"
 opAND ACCUMULATOR = error "Operation AND does not support ACCUMULATOR addressing mode"
 opAND ZEROPAGE_Y = error "Operation AND does not support ZEROPAGE_Y addressing mode"
@@ -45,7 +184,7 @@ opAND addr_mode = do
     setFlag ZERO (ax == 0)
     setFlag NEGATIVE (b7 ax)
 
-opASL ::ADDR_MODE -> StateT K6502 IO ()
+opASL ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opASL IMPLICIT = error "Operation ASL does not support IMPLICIT addressing mode"
 opASL IMMEDIATE = error "Operation ASL does not support IMMEDIATE addressing mode"
 opASL ZEROPAGE_Y = error "Operation ASL does not support ZEROPAGE_Y addressing mode"
@@ -70,7 +209,7 @@ opASL addr_mode = do
     setFlag ZERO (shifted_byte == 0) 
     setFlag NEGATIVE (b7 shifted_byte)
 
-opBCC ::ADDR_MODE -> StateT K6502 IO ()
+opBCC ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opBCC IMPLICIT = error "Operation BCC does not support IMPLICIT addressing mode"
 opBCC ACCUMULATOR = error "Operation BCC does not support ACCUMULATOR addressing mode"
 opBCC IMMEDIATE = error "Operation BCC does not support IMMEDIATE addressing mode"
@@ -90,7 +229,7 @@ opBCC RELATIVE = do
     address <- getAddr RELATIVE
     unless carry_flag (setIP address)
 
-opBCS ::ADDR_MODE -> StateT K6502 IO ()
+opBCS ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opBCS IMPLICIT = error "Operation BCS does not support IMPLICIT addressing mode"
 opBCS ACCUMULATOR = error "Operation BCS does not support ACCUMULATOR addressing mode"
 opBCS IMMEDIATE = error "Operation BCS does not support IMMEDIATE addressing mode"
@@ -110,7 +249,7 @@ opBCS RELATIVE = do
     addr <- getAddr RELATIVE 
     when carry_flag (setIP addr)
 
-opBEQ ::ADDR_MODE -> StateT K6502 IO ()
+opBEQ ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opBEQ IMPLICIT = error "Operation BEQ does not support IMPLICIT addressing mode"
 opBEQ ACCUMULATOR = error "Operation BEQ does not support ACCUMULATOR addressing mode"
 opBEQ IMMEDIATE = error "Operation BEQ does not support IMMEDIATE addressing mode"
@@ -130,7 +269,7 @@ opBEQ RELATIVE = do
     addr <- getAddr RELATIVE
     when zero_flag (setIP addr)
 
-opBIT ::ADDR_MODE -> StateT K6502 IO ()
+opBIT ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opBIT IMPLICIT = error "Operation BIT does not support IMPLICIT addressing mode"
 opBIT ACCUMULATOR = error "Operation BIT does not support ACCUMULATOR addressing mode"
 opBIT IMMEDIATE = error "Operation BIT does not support IMMEDIATE addressing mode"
@@ -151,7 +290,7 @@ opBIT addr_mode = do
     setFlag NEGATIVE (b7 byte)
     setFlag OVERFLOW (b6 byte)
 
-opBMI ::ADDR_MODE -> StateT K6502 IO ()
+opBMI ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opBMI IMPLICIT = error "Operation BMI does not support IMPLICIT addressing mode"
 opBMI ACCUMULATOR = error "Operation BMI does not support ACCUMULATOR addressing mode"
 opBMI IMMEDIATE = error "Operation BMI does not support IMMEDIATE addressing mode"
@@ -171,7 +310,7 @@ opBMI RELATIVE = do
     address <- getAddr RELATIVE
     when negative_flag (setIP address)
 
-opBNE ::ADDR_MODE -> StateT K6502 IO ()
+opBNE ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opBNE IMPLICIT = error "Operation BNE does not support IMPLICIT addressing mode"
 opBNE ACCUMULATOR = error "Operation BNE does not support ACCUMULATOR addressing mode"
 opBNE IMMEDIATE = error "Operation BNE does not support IMMEDIATE addressing mode"
@@ -191,7 +330,7 @@ opBNE RELATIVE = do
     address <- getAddr RELATIVE 
     unless zero_flag (setIP address)
 
-opBPL ::ADDR_MODE -> StateT K6502 IO ()
+opBPL ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opBPL IMPLICIT = error "Operation BPL does not support IMPLICIT addressing mode"
 opBPL ACCUMULATOR = error "Operation BPL does not support ACCUMULATOR addressing mode"
 opBPL IMMEDIATE = error "Operation BPL does not support IMMEDIATE addressing mode"
@@ -211,7 +350,7 @@ opBPL RELATIVE = do
     address <- getAddr RELATIVE 
     unless negative_flag (setIP address)
 
-opBRK ::ADDR_MODE -> StateT K6502 IO ()
+opBRK ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opBRK ACCUMULATOR = error "Operation BRK does not support ACCUMULATOR addressing mode"
 opBRK IMMEDIATE = error "Operation BRK does not support IMMEDIATE addressing mode"
 opBRK ZEROPAGE = error "Operation BRK does not support ZEROPAGE addressing mode"
@@ -238,7 +377,7 @@ opBRK IMPLICIT = do
     setFlag INTERRUPT_DISABLE True 
 
 
-opBVC ::ADDR_MODE -> StateT K6502 IO ()
+opBVC ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opBVC IMPLICIT = error "Operation BVC does not support IMPLICIT addressing mode"
 opBVC ACCUMULATOR = error "Operation BVC does not support ACCUMULATOR addressing mode"
 opBVC IMMEDIATE = error "Operation BVC does not support IMMEDIATE addressing mode"
@@ -258,7 +397,7 @@ opBVC RELATIVE = do
     address <- getAddr RELATIVE 
     unless overflow_flag (setIP address)
 
-opBVS ::ADDR_MODE -> StateT K6502 IO ()
+opBVS ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opBVS IMPLICIT = error "Operation BVS does not support IMPLICIT addressing mode"
 opBVS ACCUMULATOR = error "Operation BVS does not support ACCUMULATOR addressing mode"
 opBVS IMMEDIATE = error "Operation BVS does not support IMMEDIATE addressing mode"
@@ -278,7 +417,7 @@ opBVS RELATIVE = do
     addr <- getAddr RELATIVE 
     when overflow_flag (setIP addr)
 
-opCLC ::ADDR_MODE -> StateT K6502 IO ()
+opCLC ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opCLC ACCUMULATOR = error "Operation CLC does not support ACCUMULATOR addressing mode"
 opCLC IMMEDIATE = error "Operation CLC does not support IMMEDIATE addressing mode"
 opCLC ZEROPAGE = error "Operation CLC does not support ZEROPAGE addressing mode"
@@ -294,7 +433,7 @@ opCLC INDIRECT_Y = error "Operation CLC does not support INDIRECT_Y addressing m
 opCLC IMPLICIT = do
     setFlag CARRY False
 
-opCLD ::ADDR_MODE -> StateT K6502 IO ()
+opCLD ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opCLD ACCUMULATOR = error "Operation CLD does not support ACCUMULATOR addressing mode"
 opCLD IMMEDIATE = error "Operation CLD does not support IMMEDIATE addressing mode"
 opCLD ZEROPAGE = error "Operation CLD does not support ZEROPAGE addressing mode"
@@ -310,7 +449,7 @@ opCLD INDIRECT_Y = error "Operation CLD does not support INDIRECT_Y addressing m
 opCLD IMPLICIT = do
     setFlag DECIMAL_MODE False
 
-opCLI ::ADDR_MODE -> StateT K6502 IO ()
+opCLI ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opCLI ACCUMULATOR = error "Operation CLI does not support ACCUMULATOR addressing mode"
 opCLI IMMEDIATE = error "Operation CLI does not support IMMEDIATE addressing mode"
 opCLI ZEROPAGE = error "Operation CLI does not support ZEROPAGE addressing mode"
@@ -326,7 +465,7 @@ opCLI INDIRECT_Y = error "Operation CLI does not support INDIRECT_Y addressing m
 opCLI IMPLICIT = do
     setFlag INTERRUPT_DISABLE False
 
-opCLV ::ADDR_MODE -> StateT K6502 IO ()
+opCLV ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opCLV ACCUMULATOR = error "Operation CLV does not support ACCUMULATOR addressing mode"
 opCLV IMMEDIATE = error "Operation CLV does not support IMMEDIATE addressing mode"
 opCLV ZEROPAGE = error "Operation CLV does not support ZEROPAGE addressing mode"
@@ -342,7 +481,7 @@ opCLV INDIRECT_Y = error "Operation CLV does not support INDIRECT_Y addressing m
 opCLV IMPLICIT = do
     setFlag OVERFLOW False
 
-opCMP ::ADDR_MODE -> StateT K6502 IO ()
+opCMP ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opCMP IMPLICIT = error "Operation CMP does not support IMPLICIT addressing mode"
 opCMP ACCUMULATOR = error "Operation CMP does not support ACCUMULATOR addressing mode"
 opCMP ZEROPAGE_Y = error "Operation CMP does not support ZEROPAGE_Y addressing mode"
@@ -357,7 +496,7 @@ opCMP addr_mode = do
     setFlag CARRY (ax >= byte) 
     setFlag NEGATIVE (b7 result) 
 
-opCPX ::ADDR_MODE -> StateT K6502 IO ()
+opCPX ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opCPX IMPLICIT = error "Operation CPX does not support IMPLICIT addressing mode"
 opCPX ACCUMULATOR = error "Operation CPX does not support ACCUMULATOR addressing mode"
 opCPX ZEROPAGE_X = error "Operation CPX does not support ZEROPAGE_X addressing mode"
@@ -377,7 +516,7 @@ opCPX addr_mode = do
     setFlag CARRY (xreg >= byte) 
     setFlag NEGATIVE (b7 result) 
 
-opCPY ::ADDR_MODE -> StateT K6502 IO ()
+opCPY ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opCPY IMPLICIT = error "Operation CPY does not support IMPLICIT addressing mode"
 opCPY ACCUMULATOR = error "Operation CPY does not support ACCUMULATOR addressing mode"
 opCPY ZEROPAGE_X = error "Operation CPY does not support ZEROPAGE_X addressing mode"
@@ -397,7 +536,7 @@ opCPY addr_mode = do
     setFlag CARRY (yreg >= byte) 
     setFlag NEGATIVE (b7 result) 
 
-opDEC ::ADDR_MODE -> StateT K6502 IO ()
+opDEC ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opDEC IMPLICIT = error "Operation DEC does not support IMPLICIT addressing mode"
 opDEC ACCUMULATOR = error "Operation DEC does not support ACCUMULATOR addressing mode"
 opDEC IMMEDIATE = error "Operation DEC does not support IMMEDIATE addressing mode"
@@ -415,7 +554,7 @@ opDEC addr_mode = do
     setFlag ZERO (result == 0) 
     setFlag NEGATIVE (b7 result) 
 
-opDEX ::ADDR_MODE -> StateT K6502 IO ()
+opDEX ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opDEX ACCUMULATOR = error "Operation DEX does not support ACCUMULATOR addressing mode"
 opDEX IMMEDIATE = error "Operation DEX does not support IMMEDIATE addressing mode"
 opDEX ZEROPAGE = error "Operation DEX does not support ZEROPAGE addressing mode"
@@ -434,7 +573,7 @@ opDEX IMPLICIT = do
     setFlag ZERO (idx == 0) 
     setFlag NEGATIVE (b7 idx) 
 
-opDEY ::ADDR_MODE -> StateT K6502 IO ()
+opDEY ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opDEY ACCUMULATOR = error "Operation DEY does not support ACCUMULATOR addressing mode"
 opDEY IMMEDIATE = error "Operation DEY does not support IMMEDIATE addressing mode"
 opDEY ZEROPAGE = error "Operation DEY does not support ZEROPAGE addressing mode"
@@ -453,7 +592,7 @@ opDEY IMPLICIT = do
     setFlag ZERO (idy == 0) 
     setFlag NEGATIVE (b7 idy) 
 
-opEOR ::ADDR_MODE -> StateT K6502 IO ()
+opEOR ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opEOR IMPLICIT = error "Operation EOR does not support IMPLICIT addressing mode"
 opEOR ACCUMULATOR = error "Operation EOR does not support ACCUMULATOR addressing mode"
 opEOR ZEROPAGE_Y = error "Operation EOR does not support ZEROPAGE_Y addressing mode"
@@ -467,7 +606,7 @@ opEOR addr_mode = do
     setFlag ZERO (ax == 0) 
     setFlag NEGATIVE (b7 ax) 
 
-opINC ::ADDR_MODE -> StateT K6502 IO ()
+opINC ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opINC IMPLICIT = error "Operation INC does not support IMPLICIT addressing mode"
 opINC ACCUMULATOR = error "Operation INC does not support ACCUMULATOR addressing mode"
 opINC IMMEDIATE = error "Operation INC does not support IMMEDIATE addressing mode"
@@ -485,7 +624,7 @@ opINC addr_mode = do
     setFlag ZERO (result == 0) 
     setFlag NEGATIVE (b7 result) 
 
-opINX ::ADDR_MODE -> StateT K6502 IO ()
+opINX ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opINX ACCUMULATOR = error "Operation INX does not support ACCUMULATOR addressing mode"
 opINX IMMEDIATE = error "Operation INX does not support IMMEDIATE addressing mode"
 opINX ZEROPAGE = error "Operation INX does not support ZEROPAGE addressing mode"
@@ -504,7 +643,7 @@ opINX IMPLICIT = do
     setFlag ZERO (idx == 0) 
     setFlag NEGATIVE (b7 idx) 
 
-opINY ::ADDR_MODE -> StateT K6502 IO ()
+opINY ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opINY ACCUMULATOR = error "Operation INY does not support ACCUMULATOR addressing mode"
 opINY IMMEDIATE = error "Operation INY does not support IMMEDIATE addressing mode"
 opINY ZEROPAGE = error "Operation INY does not support ZEROPAGE addressing mode"
@@ -523,7 +662,7 @@ opINY IMPLICIT = do
     setFlag ZERO (idy == 0) 
     setFlag NEGATIVE (b7 idy) 
 
-opJMP ::ADDR_MODE -> StateT K6502 IO ()
+opJMP ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opJMP IMPLICIT = error "Operation JMP does not support IMPLICIT addressing mode"
 opJMP ACCUMULATOR = error "Operation JMP does not support ACCUMULATOR addressing mode"
 opJMP IMMEDIATE = error "Operation JMP does not support IMMEDIATE addressing mode"
@@ -539,7 +678,7 @@ opJMP addr_mode = do
     addr <- getAddr addr_mode 
     setIP addr
 
-opJSR ::ADDR_MODE -> StateT K6502 IO ()
+opJSR ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opJSR IMPLICIT = error "Operation JSR does not support IMPLICIT addressing mode"
 opJSR ACCUMULATOR = error "Operation JSR does not support ACCUMULATOR addressing mode"
 opJSR IMMEDIATE = error "Operation JSR does not support IMMEDIATE addressing mode"
@@ -563,7 +702,7 @@ opJSR addr_mode = do
     writeStack lb
     setIP addr
 
-opLDA ::ADDR_MODE -> StateT K6502 IO ()
+opLDA ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opLDA IMPLICIT = error "Operation LDA does not support IMPLICIT addressing mode"
 opLDA ACCUMULATOR = error "Operation LDA does not support ACCUMULATOR addressing mode"
 opLDA ZEROPAGE_Y = error "Operation LDA does not support ZEROPAGE_Y addressing mode"
@@ -576,7 +715,7 @@ opLDA addr_mode = do
     setFlag ZERO (byte == 0)
     setFlag NEGATIVE (b7 byte)
 
-opLDX ::ADDR_MODE -> StateT K6502 IO ()
+opLDX ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opLDX IMPLICIT = error "Operation LDX does not support IMPLICIT addressing mode"
 opLDX ACCUMULATOR = error "Operation LDX does not support ACCUMULATOR addressing mode"
 opLDX ZEROPAGE_X = error "Operation LDX does not support ZEROPAGE_X addressing mode"
@@ -592,7 +731,7 @@ opLDX addr_mode = do
     setFlag ZERO (byte == 0)
     setFlag NEGATIVE (b7 byte)
 
-opLDY ::ADDR_MODE -> StateT K6502 IO ()
+opLDY ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opLDY IMPLICIT = error "Operation LDY does not support IMPLICIT addressing mode"
 opLDY ACCUMULATOR = error "Operation LDY does not support ACCUMULATOR addressing mode"
 opLDY ZEROPAGE_Y = error "Operation LDY does not support ZEROPAGE_X addressing mode"
@@ -608,7 +747,7 @@ opLDY addr_mode = do
     setFlag ZERO (byte == 0)
     setFlag NEGATIVE (b7 byte)
 
-opLSR ::ADDR_MODE -> StateT K6502 IO ()
+opLSR ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opLSR IMPLICIT = error "Operation LSR does not support IMPLICIT addressing mode"
 opLSR IMMEDIATE = error "Operation LSR does not support IMMEDIATE addressing mode"
 opLSR ZEROPAGE_Y = error "Operation LSR does not support ZEROPAGE_Y addressing mode"
@@ -634,7 +773,7 @@ opLSR addr_mode = do
     setFlag ZERO (new_byte == 0) 
     setFlag NEGATIVE (b7 new_byte) 
 
-opNOP ::ADDR_MODE -> StateT K6502 IO ()
+opNOP ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opNOP ACCUMULATOR = error "Operation NOP does not support ACCUMULATOR addressing mode"
 opNOP IMMEDIATE = error "Operation NOP does not support IMMEDIATE addressing mode"
 opNOP ZEROPAGE = error "Operation NOP does not support ZEROPAGE addressing mode"
@@ -649,7 +788,7 @@ opNOP INDIRECT_X = error "Operation NOP does not support INDIRECT_X addressing m
 opNOP INDIRECT_Y = error "Operation NOP does not support INDIRECT_Y addressing mode"
 opNOP IMPLICIT = return ()
 
-opORA ::ADDR_MODE -> StateT K6502 IO ()
+opORA ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opORA IMPLICIT = error "Operation ORA does not support IMPLICIT addressing mode"
 opORA ACCUMULATOR = error "Operation ORA does not support ACCUMULATOR addressing mode"
 opORA ZEROPAGE_Y = error "Operation ORA does not support ZEROPAGE_Y addressing mode"
@@ -663,7 +802,7 @@ opORA addr_mode = do
     setFlag ZERO (ax == 0) 
     setFlag NEGATIVE (b7 ax)
 
-opPHA ::ADDR_MODE -> StateT K6502 IO ()
+opPHA ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opPHA ACCUMULATOR = error "Operation PHA does not support ACCUMULATOR addressing mode"
 opPHA IMMEDIATE = error "Operation PHA does not support IMMEDIATE addressing mode"
 opPHA ZEROPAGE = error "Operation PHA does not support ZEROPAGE addressing mode"
@@ -680,7 +819,7 @@ opPHA IMPLICIT = do
     ax <- getAX 
     writeStack ax
 
-opPHP ::ADDR_MODE -> StateT K6502 IO ()
+opPHP ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opPHP ACCUMULATOR = error "Operation PHP does not support ACCUMULATOR addressing mode"
 opPHP IMMEDIATE = error "Operation PHP does not support IMMEDIATE addressing mode"
 opPHP ZEROPAGE = error "Operation PHP does not support ZEROPAGE addressing mode"
@@ -697,7 +836,7 @@ opPHP IMPLICIT = do
     ps <- getFS 
     writeStack (setBit ps 4)
 
-opPLA ::ADDR_MODE -> StateT K6502 IO ()
+opPLA ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opPLA ACCUMULATOR = error "Operation PLA does not support ACCUMULATOR addressing mode"
 opPLA IMMEDIATE = error "Operation PLA does not support IMMEDIATE addressing mode"
 opPLA ZEROPAGE = error "Operation PLA does not support ZEROPAGE addressing mode"
@@ -716,7 +855,7 @@ opPLA IMPLICIT = do
     setFlag ZERO (ax == 0)
     setFlag NEGATIVE (b7 ax)
 
-opPLP ::ADDR_MODE -> StateT K6502 IO ()
+opPLP ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opPLP ACCUMULATOR = error "Operation PLP does not support ACCUMULATOR addressing mode"
 opPLP IMMEDIATE = error "Operation PLP does not support IMMEDIATE addressing mode"
 opPLP ZEROPAGE = error "Operation PLP does not support ZEROPAGE addressing mode"
@@ -735,7 +874,7 @@ opPLP IMPLICIT = do
     let ps'' = clearBit ps' 4
     setFS ps''
 
-opROL ::ADDR_MODE -> StateT K6502 IO ()
+opROL ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opROL IMPLICIT = error "Operation ROL does not support IMPLICIT addressing mode"
 opROL IMMEDIATE = error "Operation ROL does not support IMMEDIATE addressing mode"
 opROL ZEROPAGE_Y = error "Operation ROL does not support ZEROPAGE_Y addressing mode"
@@ -766,7 +905,7 @@ opROL addr_mode = do
     setFlag NEGATIVE (b7 byte')
     setFlag CARRY new_carry
 
-opROR ::ADDR_MODE -> StateT K6502 IO ()
+opROR ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opROR IMPLICIT = error "Operation ROR does not support IMPLICIT addressing mode"
 opROR IMMEDIATE = error "Operation ROR does not support IMMEDIATE addressing mode"
 opROR ZEROPAGE_Y = error "Operation ROR does not support ZEROPAGE_Y addressing mode"
@@ -797,7 +936,7 @@ opROR addr_mode = do
     setFlag NEGATIVE (b7 byte')
     setFlag CARRY new_carry
 
-opRTI ::ADDR_MODE -> StateT K6502 IO ()
+opRTI ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opRTI ACCUMULATOR = error "Operation RTI does not support ACCUMULATOR addressing mode"
 opRTI IMMEDIATE = error "Operation RTI does not support IMMEDIATE addressing mode"
 opRTI ZEROPAGE = error "Operation RTI does not support ZEROPAGE addressing mode"
@@ -821,7 +960,7 @@ opRTI IMPLICIT = do
     setFS ps''
     setIP pc
 
-opRTS ::ADDR_MODE -> StateT K6502 IO ()
+opRTS ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opRTS ACCUMULATOR = error "Operation RTS does not support ACCUMULATOR addressing mode"
 opRTS IMMEDIATE = error "Operation RTS does not support IMMEDIATE addressing mode"
 opRTS ZEROPAGE = error "Operation RTS does not support ZEROPAGE addressing mode"
@@ -840,16 +979,70 @@ opRTS IMPLICIT = do
     let pc = joinBytes pchb pclb + 1
     setIP pc
 
-opSBC ::ADDR_MODE -> StateT K6502 IO ()
+opSBC ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opSBC IMPLICIT = error "Operation SBC does not support IMPLICIT addressing mode"
 opSBC ACCUMULATOR = error "Operation SBC does not support ACCUMULATOR addressing mode"
 opSBC ZEROPAGE_Y = error "Operation SBC does not support ZEROPAGE_Y addressing mode"
 opSBC RELATIVE = error "Operation SBC does not support RELATIVE addressing mode"
 opSBC INDIRECT = error "Operation SBC does not support INDIRECT addressing mode"
 opSBC addr_mode = do
-    error "TODO"
+    decimalEnabled <- getDecimalEnabled
+    decimalMode <- getFlag DECIMAL_MODE
+    if decimalEnabled && decimalMode then opSBCDec addr_mode else opSBCReg addr_mode
 
-opSEC ::ADDR_MODE -> StateT K6502 IO ()
+sbcOverflow :: Bool -> Bool -> Bool -> Bool
+sbcOverflow x y r = (xor x r) && not (xor y r)
+-- Regular ADC
+opSBCReg :: ADDR_MODE -> StateT (K6502, Interface) IO ()
+opSBCReg addr_mode = do
+    address <- getAddr addr_mode
+    ax <- asU16 <$> getAX
+    byte' <- asU16 <$> readByte address
+    let byte = xor byte 0x00FF
+    carry_flag <- getFlag CARRY
+    let carry = if carry_flag then 1 else 0
+    let sum = ax + byte + carry
+    setFlag CARRY (sum > 0xFF)
+    setFlag ZERO (sum .&. 0xFF == 0)
+    setFlag NEGATIVE (b7 sum)
+    setFlag OVERFLOW (sbcOverflow (b7 ax) (b7 byte) (b7 sum))
+    setAX $ asU8 sum
+
+-- Decimal mode ADC
+opSBCDec :: ADDR_MODE -> StateT (K6502, Interface) IO ()
+opSBCDec addr_mode = do
+    address <- getAddr addr_mode
+    ax <- asU16 <$> getAX
+    byte <- asU16 <$> readByte address
+    carry_flag <- getFlag CARRY
+    let carry = if carry_flag then 1 else 0
+
+    let a1 = ax .&. 0x0F
+    let b1 = byte .&. 0x0F
+    let c1 = xor carry 1
+    let s1 = a1 - b1 - c1
+    let o1 = s1 > 0x0F
+
+    let a2 = ax .&. 0xF0
+    let b2 = byte .&. 0xF0
+    let c2 = if o1 then 0xFFF0 else 0x00
+    let s2 = a2 - b2 - c2
+    let o2 = s2 > 0xFF
+
+    let lsd = if o1 then (s1 - 0x06) .&. 0x0F else s1 .&. 0x0F
+    let msd = if o2 then (s2 - 0x60) .&. 0xF0 else s2 .&. 0xF0
+
+    let sum = msd + lsd
+
+    setFlag CARRY (not o2)
+    setFlag ZERO ((ax + xor byte 0xFF + carry) .&. 0xFF == 0)
+    setFlag NEGATIVE (b7 s2)
+    setFlag OVERFLOW (sbcOverflow (b7 ax) (b7 byte) (b7 s2))
+    setAX $ asU8 sum
+
+
+
+opSEC ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opSEC ACCUMULATOR = error "Operation SEC does not support ACCUMULATOR addressing mode"
 opSEC IMMEDIATE = error "Operation SEC does not support IMMEDIATE addressing mode"
 opSEC ZEROPAGE = error "Operation SEC does not support ZEROPAGE addressing mode"
@@ -865,7 +1058,7 @@ opSEC INDIRECT_Y = error "Operation SEC does not support INDIRECT_Y addressing m
 opSEC IMPLICIT = do
     setFlag CARRY True
 
-opSED ::ADDR_MODE -> StateT K6502 IO ()
+opSED ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opSED ACCUMULATOR = error "Operation SED does not support ACCUMULATOR addressing mode"
 opSED IMMEDIATE = error "Operation SED does not support IMMEDIATE addressing mode"
 opSED ZEROPAGE = error "Operation SED does not support ZEROPAGE addressing mode"
@@ -881,7 +1074,7 @@ opSED INDIRECT_Y = error "Operation SED does not support INDIRECT_Y addressing m
 opSED IMPLICIT = do
     setFlag DECIMAL_MODE True
 
-opSEI ::ADDR_MODE -> StateT K6502 IO ()
+opSEI ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opSEI ACCUMULATOR = error "Operation SEI does not support ACCUMULATOR addressing mode"
 opSEI IMMEDIATE = error "Operation SEI does not support IMMEDIATE addressing mode"
 opSEI ZEROPAGE = error "Operation SEI does not support ZEROPAGE addressing mode"
@@ -897,7 +1090,7 @@ opSEI INDIRECT_Y = error "Operation SEI does not support INDIRECT_Y addressing m
 opSEI IMPLICIT = do
     setFlag INTERRUPT_DISABLE True
 
-opSTA ::ADDR_MODE -> StateT K6502 IO ()
+opSTA ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opSTA IMPLICIT = error "Operation STA does not support IMPLICIT addressing mode"
 opSTA ACCUMULATOR = error "Operation STA does not support ACCUMULATOR addressing mode"
 opSTA IMMEDIATE = error "Operation STA does not support IMMEDIATE addressing mode"
@@ -909,7 +1102,7 @@ opSTA addr_mode = do
     ax <- getAX 
     writeByte addr ax
 
-opSTX ::ADDR_MODE -> StateT K6502 IO ()
+opSTX ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opSTX IMPLICIT = error "Operation STX does not support IMPLICIT addressing mode"
 opSTX ACCUMULATOR = error "Operation STX does not support ACCUMULATOR addressing mode"
 opSTX IMMEDIATE = error "Operation STX does not support IMMEDIATE addressing mode"
@@ -925,7 +1118,7 @@ opSTX addr_mode = do
     regx <- getIX 
     writeByte addr regx
 
-opSTY ::ADDR_MODE -> StateT K6502 IO ()
+opSTY ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opSTY IMPLICIT = error "Operation STY does not support IMPLICIT addressing mode"
 opSTY ACCUMULATOR = error "Operation STY does not support ACCUMULATOR addressing mode"
 opSTY IMMEDIATE = error "Operation STY does not support IMMEDIATE addressing mode"
@@ -941,7 +1134,7 @@ opSTY addr_mode = do
     regy <- getIY 
     writeByte addr regy
 
-opTAX ::ADDR_MODE -> StateT K6502 IO ()
+opTAX ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opTAX ACCUMULATOR = error "Operation TAX does not support ACCUMULATOR addressing mode"
 opTAX IMMEDIATE = error "Operation TAX does not support IMMEDIATE addressing mode"
 opTAX ZEROPAGE = error "Operation TAX does not support ZEROPAGE addressing mode"
@@ -960,7 +1153,7 @@ opTAX IMPLICIT = do
     setFlag ZERO (ax == 0)
     setFlag NEGATIVE (b7 ax)
 
-opTAY ::ADDR_MODE -> StateT K6502 IO ()
+opTAY ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opTAY ACCUMULATOR = error "Operation TAY does not support ACCUMULATOR addressing mode"
 opTAY IMMEDIATE = error "Operation TAY does not support IMMEDIATE addressing mode"
 opTAY ZEROPAGE = error "Operation TAY does not support ZEROPAGE addressing mode"
@@ -979,7 +1172,7 @@ opTAY IMPLICIT = do
     setFlag ZERO (ax == 0)
     setFlag NEGATIVE (b7 ax)
 
-opTSX ::ADDR_MODE -> StateT K6502 IO ()
+opTSX ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opTSX ACCUMULATOR = error "Operation TSX does not support ACCUMULATOR addressing mode"
 opTSX IMMEDIATE = error "Operation TSX does not support IMMEDIATE addressing mode"
 opTSX ZEROPAGE = error "Operation TSX does not support ZEROPAGE addressing mode"
@@ -998,7 +1191,7 @@ opTSX IMPLICIT = do
     setFlag ZERO (sp == 0)
     setFlag NEGATIVE (b7 sp)
 
-opTXA ::ADDR_MODE -> StateT K6502 IO ()
+opTXA ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opTXA ACCUMULATOR = error "Operation TXA does not support ACCUMULATOR addressing mode"
 opTXA IMMEDIATE = error "Operation TXA does not support IMMEDIATE addressing mode"
 opTXA ZEROPAGE = error "Operation TXA does not support ZEROPAGE addressing mode"
@@ -1017,7 +1210,7 @@ opTXA IMPLICIT = do
     setFlag ZERO (xreg == 0)
     setFlag NEGATIVE (b7 xreg)
 
-opTXS ::ADDR_MODE -> StateT K6502 IO ()
+opTXS ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opTXS ACCUMULATOR = error "Operation TXS does not support ACCUMULATOR addressing mode"
 opTXS IMMEDIATE = error "Operation TXS does not support IMMEDIATE addressing mode"
 opTXS ZEROPAGE = error "Operation TXS does not support ZEROPAGE addressing mode"
@@ -1034,7 +1227,7 @@ opTXS IMPLICIT = do
     xreg <- getIX 
     setSP xreg
 
-opTYA ::ADDR_MODE -> StateT K6502 IO ()
+opTYA ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opTYA ACCUMULATOR = error "Operation TYA does not support ACCUMULATOR addressing mode"
 opTYA IMMEDIATE = error "Operation TYA does not support IMMEDIATE addressing mode"
 opTYA ZEROPAGE = error "Operation TYA does not support ZEROPAGE addressing mode"

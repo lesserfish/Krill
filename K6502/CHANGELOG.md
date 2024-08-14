@@ -1,4 +1,4 @@
-# Revision history for Krill
+# Revision history for K6502
 
 ## 0.1.0.0 -- YYYY-mm-dd
 

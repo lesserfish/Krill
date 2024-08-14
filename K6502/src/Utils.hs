@@ -3,7 +3,7 @@ module Utils where
 import Control.Monad.State
 import Data.Bits
 import Data.Word
-import Data.Int
+import Data.Int()
 
 modifyFst :: (a -> a) -> StateT (a, b) IO ()
 modifyFst f = do
@@ -55,5 +55,8 @@ splitBytes byte = (hb, lb)
     lb = fromIntegral (0x00FF .&. byte)
     hb = fromIntegral ((byte .>>. 8) .&. 0x00FF)
 
-toU8 x = (fromIntegral x) :: Word8
-toU16 x = (fromIntegral x) :: Word16
+asU8 :: Integral a => a -> Word8
+asU8 = fromIntegral 
+
+asU16 :: Integral a => a -> Word16
+asU16 = fromIntegral
