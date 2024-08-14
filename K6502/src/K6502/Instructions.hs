@@ -131,12 +131,12 @@ opADCReg addr_mode = do
     byte <- asU16 <$> readByte address
     carry_flag <- getFlag CARRY
     let carry = if carry_flag then 1 else 0
-    let sum = ax + byte + carry
-    setFlag CARRY (sum > 0xFF)
-    setFlag ZERO (sum .&. 0xFF == 0)
-    setFlag NEGATIVE (b7 sum)
-    setFlag OVERFLOW (adcOverflow (b7 ax) (b7 byte) (b7 sum))
-    setAX $ asU8 sum
+    let s = ax + byte + carry
+    setFlag CARRY (s > 0xFF)
+    setFlag ZERO (s .&. 0xFF == 0)
+    setFlag NEGATIVE (b7 s)
+    setFlag OVERFLOW (adcOverflow (b7 ax) (b7 byte) (b7 s))
+    setAX $ asU8 s
 
 -- Decimal mode ADC
 opADCDec :: ADDR_MODE -> StateT (K6502, Interface) IO ()
@@ -147,28 +147,28 @@ opADCDec addr_mode = do
     carry_flag <- getFlag CARRY
     let carry = if carry_flag then 1 else 0
 
-    let a1 = ax .&. 0x0F
-    let b1 = byte .&. 0x0F
-    let c1 = carry
-    let s1 = a1 + b1 + c1
+    let x1 = ax .&. 0x0F
+    let y1 = byte .&. 0x0F
+    let z1 = carry
+    let s1 = x1 + y1 + z1
     let o1 = s1 >= 0x0A
 
-    let a2 = ax .&. 0xF0
-    let b2 = byte .&. 0xF0
-    let c2 = if o1 then 0x10 else 0x00
-    let s2 = a2 + b2 + c2
+    let x2 = ax .&. 0xF0
+    let y2 = byte .&. 0xF0
+    let z2 = if o1 then 0x10 else 0x00
+    let s2 = x2 + y2 + z2
     let o2 = s2 >= 0xA0
 
     let lsd = if o1 then (s1 + 0x06) .&. 0x0F else s1 .&. 0x0F
     let msd = if o2 then (s2 + 0x60) .&. 0xF0 else s2 .&. 0xF0
 
-    let sum = msd + lsd
+    let s = msd + lsd
 
     setFlag CARRY o2
     setFlag ZERO ((ax + byte + carry) .&. 0xFF == 0)
     setFlag NEGATIVE (b7 s2)
     setFlag OVERFLOW (adcOverflow (b7 ax) (b7 byte) (b7 s2))
-    setAX $ asU8 sum
+    setAX $ asU8 s
 
 opAND ::ADDR_MODE -> StateT (K6502, Interface) IO ()
 opAND IMPLICIT = error "Operation AND does not support IMPLICIT addressing mode"
@@ -991,22 +991,22 @@ opSBC addr_mode = do
     if decimalEnabled && decimalMode then opSBCDec addr_mode else opSBCReg addr_mode
 
 sbcOverflow :: Bool -> Bool -> Bool -> Bool
-sbcOverflow x y r = (xor x r) && not (xor y r)
+sbcOverflow x y r = xor x r && not (xor y r)
 -- Regular ADC
 opSBCReg :: ADDR_MODE -> StateT (K6502, Interface) IO ()
 opSBCReg addr_mode = do
     address <- getAddr addr_mode
     ax <- asU16 <$> getAX
     byte' <- asU16 <$> readByte address
-    let byte = xor byte 0x00FF
+    let byte = xor byte' 0x00FF
     carry_flag <- getFlag CARRY
     let carry = if carry_flag then 1 else 0
-    let sum = ax + byte + carry
-    setFlag CARRY (sum > 0xFF)
-    setFlag ZERO (sum .&. 0xFF == 0)
-    setFlag NEGATIVE (b7 sum)
-    setFlag OVERFLOW (sbcOverflow (b7 ax) (b7 byte) (b7 sum))
-    setAX $ asU8 sum
+    let s = ax + byte + carry
+    setFlag CARRY (s > 0xFF)
+    setFlag ZERO (s .&. 0xFF == 0)
+    setFlag NEGATIVE (b7 s)
+    setFlag OVERFLOW (adcOverflow (b7 ax) (b7 byte) (b7 s))
+    setAX $ asU8 s
 
 -- Decimal mode ADC
 opSBCDec :: ADDR_MODE -> StateT (K6502, Interface) IO ()
@@ -1017,28 +1017,28 @@ opSBCDec addr_mode = do
     carry_flag <- getFlag CARRY
     let carry = if carry_flag then 1 else 0
 
-    let a1 = ax .&. 0x0F
-    let b1 = byte .&. 0x0F
-    let c1 = xor carry 1
-    let s1 = a1 - b1 - c1
+    let x1 = ax .&. 0x0F
+    let y1 = byte .&. 0x0F
+    let z1 = xor carry 1
+    let s1 = x1 - y1 - z1
     let o1 = s1 > 0x0F
 
-    let a2 = ax .&. 0xF0
-    let b2 = byte .&. 0xF0
-    let c2 = if o1 then 0xFFF0 else 0x00
-    let s2 = a2 - b2 - c2
+    let x2 = ax .&. 0xF0
+    let y2 = byte .&. 0xF0
+    let z2 = if o1 then 0xFFF0 else 0x00
+    let s2 = x2 - y2 + z2
     let o2 = s2 > 0xFF
 
     let lsd = if o1 then (s1 - 0x06) .&. 0x0F else s1 .&. 0x0F
     let msd = if o2 then (s2 - 0x60) .&. 0xF0 else s2 .&. 0xF0
 
-    let sum = msd + lsd
+    let s = msd + lsd
 
     setFlag CARRY (not o2)
     setFlag ZERO ((ax + xor byte 0xFF + carry) .&. 0xFF == 0)
     setFlag NEGATIVE (b7 s2)
     setFlag OVERFLOW (sbcOverflow (b7 ax) (b7 byte) (b7 s2))
-    setAX $ asU8 sum
+    setAX $ asU8 s
 
 
 

@@ -4,6 +4,7 @@ import Control.Monad.State
 import Data.Bits
 import Data.Word
 import Data.Int()
+import Text.Printf
 
 modifyFst :: (a -> a) -> StateT (a, b) IO ()
 modifyFst f = do
@@ -60,3 +61,15 @@ asU8 = fromIntegral
 
 asU16 :: Integral a => a -> Word16
 asU16 = fromIntegral
+
+toHex1 :: Word8 -> String
+toHex1 = printf "%02X"
+
+toHex2 :: Word16 -> String
+toHex2 = printf "%04X"
+
+toHex4 :: Word32 -> String
+toHex4 = printf "%08X"
+
+toHex8 :: Word64 -> String
+toHex8 = printf "%016X"

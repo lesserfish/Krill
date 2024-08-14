@@ -89,6 +89,7 @@ runTest' test = describe "K6502 Test" $ do
         finalPC <- fromState . final $ test
         predictedPC <- tickPC initialPC
         check <- comparePC finalPC predictedPC
+        unless check (debug test initialPC finalPC predictedPC)
         check `shouldBe` True
 
 debug :: Test -> MiniPC -> MiniPC -> MiniPC -> IO()
