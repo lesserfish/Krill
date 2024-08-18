@@ -1,1 +1,1 @@
-packages: ./K6502/ ./KBasic/
+packages: ./K6502/ ./AppleI/
