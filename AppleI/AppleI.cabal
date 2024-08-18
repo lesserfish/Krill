@@ -26,11 +26,15 @@ executable AppleI
                     ,   AppleI.Memory
                     ,   AppleI.Main
                     ,   AppleI.Carousel
+                    ,   Frontend.Internal
+                    ,   Frontend.Main
     -- other-extensions:
     build-depends:      base ^>=4.17.2.1
                     ,   K6502
                     ,   vector >= 0.13.1.0
                     ,   mtl >= 2.2.2
+                    ,   sdl2 >= 2.5.5.0
+                    ,   text >= 2.0.2
 
     hs-source-dirs:     app
 

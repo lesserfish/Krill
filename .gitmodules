@@ -2,5 +2,5 @@
 	path = K6502/test/TomHarte
 	url = https://github.com/SingleStepTests/65x02
 [submodule "KBasic/msbasic"]
-	path = KBasic/Basic/msbasic
+	path = AppleI/Basic/msbasic
 	url = https://github.com/mist64/msbasic

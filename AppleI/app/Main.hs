@@ -1,7 +1,6 @@
 module Main where
 
-import Data.Word
+import qualified Frontend.Main as App
 
 main :: IO ()
-main = do
-    return ()
+main = App.main
