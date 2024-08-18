@@ -1,6 +1,6 @@
 module AppleI.Carousel where
 
-import Prelude hiding (head)
+import Prelude hiding (head, last)
 import qualified Data.Vector.Unboxed.Mutable as UMV
 import Data.Word
 import Data.Bits ((.&.), (.>>.), (.<<.))
@@ -23,7 +23,7 @@ shiftN n = do
     let position = cPosition memory
     let position' = mod (position + n) (cLength memory)
     put $ memory {cPosition = position'}
-    head
+    last
 
 shift :: StateT Carousel IO Word8
 shift = shiftN 1
@@ -38,7 +38,8 @@ insert word = do
     let d6 = (word .&. 0x20) .>>. 5
 
     memory <- get
-    let address = cPosition memory
+
+    let address = mod (cPosition memory - 1) (cLength memory)
 
     UMV.write (cS1 memory) address d1
     UMV.write (cS2 memory) address d2
@@ -49,8 +50,9 @@ insert word = do
 
 push ::  Word8 -> StateT Carousel IO Word8
 push word = do
-    output <- shift
-    insert word 
+    output <- last
+    _ <- shift
+    insert word
     return output
 
 head :: StateT Carousel IO Word8

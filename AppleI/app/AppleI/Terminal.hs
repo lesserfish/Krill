@@ -1,5 +1,6 @@
 module AppleI.Terminal where
 
+import Text.Printf
 import Data.Word
 import Control.Monad.State
 import Data.Bits (xor)
@@ -42,11 +43,10 @@ new = do
     vb <- M.fromList M.ReadAccess (replicate (24 * 40) 0xA0)
     vsr <- C.new 960
     lr <- C.new 40
-    lr' <- execStateT (C.shiftN 39) lr
     return $ Terminal { dCursorChar = 0x00
                       , dChar = 0x00
                       , dVideoShiftRegister = vsr
-                      , dLineRegister = lr'
+                      , dLineRegister = lr
                       , dVideoBuffer = vb
                       , dCurrentLine = 0
                       , dCurrentCursor = 0
@@ -107,6 +107,17 @@ pushLR inbyte = do
     put term {dLineRegister = lr'}
     return outbyte
 
+debug :: StateT Terminal IO ()
+debug = do
+    vsr <- gets dVideoShiftRegister
+    vsrdata <- liftIO . C.toList $ vsr
+    liftIO . print $ "VSR: " ++ show vsrdata
+    liftIO . print $ "P: " ++ show (C.cPosition vsr)
+    lr <- gets dLineRegister
+    lrdata <- liftIO . C.toList $ lr
+    liftIO . print $ "VSR: " ++ show lrdata
+    liftIO . print $ "P: " ++ show (C.cPosition lr)
+
 updateCarousel :: StateT Terminal IO ()
 updateCarousel = do
     char <- gets dChar
@@ -121,6 +132,7 @@ updateCarousel = do
             let newcursor = mod (cursor + 1) 960
             updateCursor newcursor
             updateChar 0x00
+            when (char == 0xB0) debug
         else do
             byte <- shiftVSR
             _ <- pushLR byte
@@ -150,7 +162,7 @@ updateDisplay = do
     lr <- gets dLineRegister
     line <- gets dCurrentLine
     let shiftPos = C.cPosition lr
-    when (shiftPos == 39) (do
+    when (shiftPos == 0) (do
         linebuff <- liftIO $ C.toList lr
         pushLine linebuff
         let newline = mod (line + 1) 24
