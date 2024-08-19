@@ -48,7 +48,7 @@ new = do
                       , dVideoShiftRegister = vsr
                       , dLineRegister = lr
                       , dVideoBuffer = vb
-                      , dCurrentLine = 0
+                      , dCurrentLine = 23
                       , dCurrentCursor = 0
                       , dState = NORMAL
                       , dCounter = 0}
@@ -57,7 +57,10 @@ updateChar :: Word8 -> StateT Terminal IO ()
 updateChar char = modify (\term -> term {dChar = char})
 
 updateCursor :: Int -> StateT Terminal IO ()
-updateCursor cur = modify (\term -> term {dCurrentCursor = cur})
+updateCursor cur = modify (\term -> term {dCurrentCursor = mod cur 960})
+
+offsetCursor :: Int -> StateT Terminal IO ()
+offsetCursor offset = modify (\term -> term {dCurrentCursor = mod (dCurrentCursor term + offset) 960})
 
 updateLine :: Int -> StateT Terminal IO ()
 updateLine line = modify (\term -> term {dCurrentLine = line})
@@ -73,7 +76,6 @@ sendChar char term = term' where
 getVBuffer :: Terminal -> IO [Word8]
 getVBuffer term = do
     M.toList . dVideoBuffer $ term
-
 
 shiftVSR :: StateT Terminal IO Word8
 shiftVSR = do
@@ -107,40 +109,31 @@ pushLR inbyte = do
     put term {dLineRegister = lr'}
     return outbyte
 
-debug :: StateT Terminal IO ()
-debug = do
-    vsr <- gets dVideoShiftRegister
-    vsrdata <- liftIO . C.toList $ vsr
-    liftIO . print $ "VSR: " ++ show vsrdata
-    liftIO . print $ "P: " ++ show (C.cPosition vsr)
-    lr <- gets dLineRegister
-    lrdata <- liftIO . C.toList $ lr
-    liftIO . print $ "VSR: " ++ show lrdata
-    liftIO . print $ "P: " ++ show (C.cPosition lr)
-
+handleKey :: Word8 -> StateT Terminal IO ()
+handleKey char = do
+    pushChar char
+    updateChar 0x00
+    
 updateCarousel :: StateT Terminal IO ()
 updateCarousel = do
     char <- gets dChar
     cursor <- gets dCurrentCursor
-    vsr <- gets dVideoShiftRegister
-    let shiftPos = C.cPosition vsr
-    -- liftIO . print $ "Shift position: " ++ show shiftPos ++ "  Cursor: " ++ show cursor ++ "  Char:  " ++ show char
-    if shiftPos == cursor && char > 0x7F
-        then do
-            byte <- pushVSR char
-            _ <- pushLR byte
-            let newcursor = mod (cursor + 1) 960
-            updateCursor newcursor
-            updateChar 0x00
-            when (char == 0xB0) debug
+    if cursor == 0 && char > 0x7F then handleKey char
         else do
             byte <- shiftVSR
             _ <- pushLR byte
+            offsetCursor 1
             return ()
+
+pushChar :: Word8 -> StateT Terminal IO ()
+pushChar char = do
+    byte <- pushVSR char
+    _ <- pushLR byte
+    offsetCursor 2
+
 
 pushLine :: [Word8] -> StateT Terminal IO ()
 pushLine linebuff = do
-    cursor <- gets dCurrentCursor
     videobuff <- gets dVideoBuffer
     line <- gets dCurrentLine
     let address = [line * 40 + x | x <- [0..40]]
@@ -150,12 +143,6 @@ pushLine linebuff = do
             liftIO $ M.writeByte videobuff addr' char
             return ()
         )
-    when (line * 40 <= cursor && cursor <= (line * 40 + 40)) (do
-            cursorchar <- gets dCursorChar
-            let addr' = fromIntegral cursor
-            liftIO $ M.writeByte videobuff addr' cursorchar
-        )
-    increaseCounter
 
 updateDisplay :: StateT Terminal IO ()
 updateDisplay = do
@@ -165,25 +152,14 @@ updateDisplay = do
     when (shiftPos == 0) (do
         linebuff <- liftIO $ C.toList lr
         pushLine linebuff
-        let newline = mod (line + 1) 24
-        updateLine newline
+        let line' = mod (line - 1) 24
+        updateLine line'
         return ())
-
-updateCursorChar :: StateT Terminal IO ()
-updateCursorChar = do
-    counter <- gets dCounter
-    -- This is a hard coded stupid number that takes into NO account the speed of the actual clock that blinks the cursor.
-    -- I think that it is an independent clock but I am not certain. Anyway, we should probably measure it correctly.
-    when (mod counter 7000 == 0) (do
-        modify (\term -> term {dCursorChar = xor (dCursorChar term) 0x20})
-        modify (\term -> term {dCounter = 1})
-        )
 
 tick' :: StateT Terminal IO ()
 tick' = do
     updateCarousel
     updateDisplay
-    updateCursorChar
 
 tick :: Terminal -> IO Terminal
 tick = execStateT tick'

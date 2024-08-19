@@ -21,7 +21,7 @@ shiftN :: Int -> StateT Carousel IO Word8
 shiftN n = do
     memory <- get
     let position = cPosition memory
-    let position' = mod (position + n) (cLength memory)
+    let position' = mod (position - n) (cLength memory)
     put $ memory {cPosition = position'}
     last
 
@@ -51,8 +51,8 @@ insert word = do
 push ::  Word8 -> StateT Carousel IO Word8
 push word = do
     output <- last
-    _ <- shift
     insert word
+    _ <- shift
     return output
 
 head :: StateT Carousel IO Word8
@@ -97,6 +97,9 @@ last = do
 
 toList :: Carousel -> IO [Word8]
 toList memory = do
+    let p = cPosition memory
+    let l = cLength memory
+    let address = [p .. l - 1] ++ [0 .. p - 1]
     mapM (\i -> do 
         d1 <- UMV.read (cS1 memory) i
         d2 <- UMV.read (cS2 memory) i
@@ -112,7 +115,30 @@ toList memory = do
                   + (d5 .<<. 4)
                   + (d6 .<<. 5)
         return value
-        ) [0 .. (cLength memory - 1)] :: IO [Word8]
+        ) address
+
+toList' :: Carousel -> IO [Word8]
+toList' memory = do
+    let l = cLength memory
+    let address = [0 .. l -1]
+    mapM (\i -> do 
+        d1 <- UMV.read (cS1 memory) i
+        d2 <- UMV.read (cS2 memory) i
+        d3 <- UMV.read (cS3 memory) i
+        d4 <- UMV.read (cS4 memory) i
+        d5 <- UMV.read (cS5 memory) i
+        d6 <- UMV.read (cS6 memory) i
+
+        let value = (d1 .<<. 0)
+                  + (d2 .<<. 1)
+                  + (d3 .<<. 2)
+                  + (d4 .<<. 3)
+                  + (d5 .<<. 4)
+                  + (d6 .<<. 5)
+        return value
+        ) address
+
+
 
 new :: Int -> IO Carousel
 new len = do
