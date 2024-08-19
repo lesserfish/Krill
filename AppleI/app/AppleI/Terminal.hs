@@ -1,12 +1,9 @@
 module AppleI.Terminal where
 
-import Text.Printf
 import Data.Word
 import Control.Monad.State
-import Data.Bits (xor)
 import qualified AppleI.Carousel as C
 import qualified AppleI.Memory as M
-import qualified Data.Vector.Generic.Mutable as M
 
 -- There is very little documentation on the APPLE I terminal.
 -- You are essentially forced to read the schematics, or learn from people who did.
@@ -56,17 +53,14 @@ new = do
 updateChar :: Word8 -> StateT Terminal IO ()
 updateChar char = modify (\term -> term {dChar = char})
 
-updateCursor :: Int -> StateT Terminal IO ()
-updateCursor cur = modify (\term -> term {dCurrentCursor = mod cur 960})
-
 offsetCursor :: Int -> StateT Terminal IO ()
 offsetCursor offset = modify (\term -> term {dCurrentCursor = mod (dCurrentCursor term + offset) 960})
 
+offsetLine :: Int -> StateT Terminal IO ()
+offsetLine offset = modify (\term -> term {dCurrentLine = mod (dCurrentLine term + offset) 24})
+
 updateLine :: Int -> StateT Terminal IO ()
 updateLine line = modify (\term -> term {dCurrentLine = line})
-
-increaseCounter :: StateT Terminal IO ()
-increaseCounter = modify (\term -> term {dCounter = dCounter term + 1})
 
 sendChar :: Word8 -> Terminal -> Terminal
 sendChar char term = term' where
@@ -114,18 +108,13 @@ handleKey char = do
     pushChar char
     updateChar 0x00
     
-updateCarousel :: StateT Terminal IO ()
-updateCarousel = do
-    char <- gets dChar
-    cursor <- gets dCurrentCursor
-    if cursor == 0 && char > 0x7F then handleKey char
-        else do
-            byte <- shiftVSR
-            _ <- pushLR byte
-            offsetCursor 1
-            return ()
-
 pushChar :: Word8 -> StateT Terminal IO ()
+pushChar 0xB1 = do
+    offsetCursor 40
+pushChar 0xB2 = do
+    offsetLine (-1)
+    offsetCursor 40
+
 pushChar char = do
     byte <- pushVSR char
     _ <- pushLR byte
@@ -144,17 +133,26 @@ pushLine linebuff = do
             return ()
         )
 
+updateCarousel :: StateT Terminal IO ()
+updateCarousel = do
+    char <- gets dChar
+    cursor <- gets dCurrentCursor
+    if cursor == 0 && char > 0x7F then handleKey char
+        else do
+            byte <- shiftVSR
+            _ <- pushLR byte
+            offsetCursor 1
+            return ()
+
+
 updateDisplay :: StateT Terminal IO ()
 updateDisplay = do
     lr <- gets dLineRegister
-    line <- gets dCurrentLine
     let shiftPos = C.cPosition lr
     when (shiftPos == 0) (do
         linebuff <- liftIO $ C.toList lr
         pushLine linebuff
-        let line' = mod (line - 1) 24
-        updateLine line'
-        return ())
+        offsetLine (-1))
 
 tick' :: StateT Terminal IO ()
 tick' = do
