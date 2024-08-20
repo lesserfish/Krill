@@ -167,10 +167,17 @@ toList' memory = do
 
 new :: Int -> IO Carousel
 new len = do
-    s1 <- UMV.generate len (\i -> fromIntegral $ i .&. 1)
-    s2 <- UMV.generate len (\i -> fromIntegral $ (i .>>. 1) .&. 1)
-    s3 <- UMV.generate len (\i -> fromIntegral $ (i .>>. 2) .&. 1)
-    s4 <- UMV.generate len (\i -> fromIntegral $ (i .>>. 3) .&. 1)
-    s5 <- UMV.generate len (\i -> fromIntegral $ (i .>>. 4) .&. 1)
-    s6 <- UMV.generate len (\i -> fromIntegral $ (i .>>. 5) .&. 1)
+    -- s1 <- UMV.generate len (\i -> fromIntegral $ i .&. 1)
+    -- s2 <- UMV.generate len (\i -> fromIntegral $ (i .>>. 1) .&. 1)
+    -- s3 <- UMV.generate len (\i -> fromIntegral $ (i .>>. 2) .&. 1)
+    -- s4 <- UMV.generate len (\i -> fromIntegral $ (i .>>. 3) .&. 1)
+    -- s5 <- UMV.generate len (\i -> fromIntegral $ (i .>>. 4) .&. 1)
+    -- s6 <- UMV.generate len (\i -> fromIntegral $ (i .>>. 5) .&. 1)
+    s1 <- UMV.replicate len 0
+    s2 <- UMV.replicate len 0
+    s3 <- UMV.replicate len 0
+    s4 <- UMV.replicate len 0
+    s5 <- UMV.replicate len 0
+    s6 <- UMV.replicate len 1
+
     return $ Carousel {cS1 = s1, cS2 = s2, cS3 = s3, cS4 = s4, cS5 = s5, cS6 = s6, cLength = len, cPosition = 0}

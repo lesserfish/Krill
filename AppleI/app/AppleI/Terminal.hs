@@ -194,8 +194,15 @@ updateCarousel :: StateT Terminal IO ()
 updateCarousel = do
     char <- gets dChar
     cursor <- shiftCB
-    if cursor == 0 && char > 0x7F 
-        then handleKey char
+    cursorChar <- gets dCursorChar
+    if cursor == 0
+        then do
+            if char > 0x7F 
+                then handleKey char
+                else do
+                    _ <- shiftVSR
+                    _ <- pushLR cursorChar
+                    return ()
         else simpleShift
 
 

@@ -100,6 +100,7 @@ handleKeyboard ke = do
     when (keyboardEventKeyMotion ke == Pressed) (do
             case keysymKeycode . keyboardEventKeysym $ ke of
                 KeycodeReturn -> sendKey (0xFF - 0x80)
+                KeycodeBackspace -> sendKey (0xFE - 0x80)
                 _ -> return ()
         )
 
