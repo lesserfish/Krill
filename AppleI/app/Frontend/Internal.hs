@@ -4,6 +4,7 @@ module Frontend.Internal where
 
 import qualified AppleI.Terminal as Term
 
+import Text.Printf
 import Data.Text (Text)
 import Data.Foldable (forM_)
 import SDL hiding (get)
@@ -12,6 +13,7 @@ import Control.Monad.State
 import Data.Word
 import Data.Bits
 import qualified AppleI.Terminal as Terminal
+import AppleI.Terminal (handleKey)
 
 _CHAR_WIDTH :: CInt 
 _CHAR_WIDTH = 16
@@ -31,8 +33,8 @@ data Context = Context {
 initSDL :: FilePath -> IO Context
 initSDL filepath = do
     initializeAll
-    let winsize = 2 * V2 (40 * _CHAR_WIDTH) (24 * _CHAR_HEIGHT)
-    let texsize = V2 (40 * _CHAR_WIDTH) (24 * _CHAR_HEIGHT)
+    let winsize = 2 * V2 (5 * _CHAR_WIDTH) (5 * _CHAR_HEIGHT)
+    let texsize = V2 (5 * _CHAR_WIDTH) (5 * _CHAR_HEIGHT)
     window <- createWindow "Apple I" defaultWindow{windowInitialSize =  winsize}
     renderer <- createRenderer window (-1) defaultRenderer{ rendererTargetTexture = True }
     fontSurf <- loadBMP filepath
@@ -63,12 +65,12 @@ renderVBuffer buffer = do
     let fontTex = fontTexture ctx 
     let winText = windowTexture ctx
     let renderer = sdlRenderer ctx
-    let pixels = [(x, y) | x <- [0..39], y <- [0..23]]
+    let pixels = [(x, y) | x <- [0..4], y <- [0..4]]
     rendererRenderTarget renderer $= Just winText
     clear renderer
 
     mapM_ (\(x, y) -> do
-        let byte = buffer !! (y * 40 + x)
+        let byte = buffer !! (y * 5 + x)
         let src_rect = fontChar byte
         let tgt_rect = screenRect (x, y)
         copy renderer fontTex (Just src_rect) (Just tgt_rect)
@@ -94,15 +96,24 @@ getVBuffer = do
 exitProgram :: StateT Context IO ()
 exitProgram = modify (\ctx -> ctx{exitRequest = True})
 
+handleKeyboard :: SDL.KeyboardEventData -> StateT Context IO ()
+handleKeyboard ke = do
+    when (keyboardEventKeyMotion ke == Pressed) (do
+            case keysymKeycode . keyboardEventKeysym $ ke of
+                KeycodeReturn -> sendKey (0xFF - 0x80)
+                _ -> return ()
+        )
+
 handleText :: SDL.TextInputEventData -> StateT Context IO ()
-handleText ke = do
-    let text = textInputEventText ke
+handleText te = do
+    let text = textInputEventText te
     let akey = appleKey text
     forM_ akey sendKey
 
 handleEvents :: SDL.Event -> StateT Context IO ()
 handleEvents e = do
     case SDL.eventPayload e of
+        SDL.KeyboardEvent x -> handleKeyboard x
         SDL.TextInputEvent x -> handleText x
         SDL.QuitEvent -> exitProgram
         _ -> return ()
@@ -115,7 +126,7 @@ control = do
 tick :: StateT Context IO ()
 tick = do
     ctx <- get
-    term' <- liftIO $ Term.tickN 940 (terminal ctx)
+    term' <- liftIO $ Term.tickN 25 (terminal ctx)
     put ctx{terminal = term'}
 
 appleKey :: Text -> Maybe Word8

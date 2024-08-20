@@ -1,5 +1,6 @@
-module AppleI.Carousel where
+module AppleI.Terminal.Carousel where
 
+import Text.Printf
 import Prelude hiding (head, last)
 import qualified Data.Vector.Unboxed.Mutable as UMV
 import Data.Word
@@ -23,23 +24,23 @@ shiftN n = do
     let position = cPosition memory
     let position' = mod (position - n) (cLength memory)
     put $ memory {cPosition = position'}
-    last
+    head
 
 shift :: StateT Carousel IO Word8
 shift = shiftN 1
 
 insert :: Word8 -> StateT Carousel IO ()
-insert word = do
-    let d1 = (word .&. 0x01) .>>. 0
-    let d2 = (word .&. 0x02) .>>. 1
-    let d3 = (word .&. 0x04) .>>. 2
-    let d4 = (word .&. 0x08) .>>. 3
-    let d5 = (word .&. 0x10) .>>. 4
-    let d6 = (word .&. 0x20) .>>. 5
+insert byte = do
+    let d1 = (byte .&. 0x01) .>>. 0
+    let d2 = (byte .&. 0x02) .>>. 1
+    let d3 = (byte .&. 0x04) .>>. 2
+    let d4 = (byte .&. 0x08) .>>. 3
+    let d5 = (byte .&. 0x10) .>>. 4
+    let d6 = (byte .&. 0x20) .>>. 5
 
     memory <- get
 
-    let address = mod (cPosition memory - 1) (cLength memory)
+    let address = mod (cPosition memory) (cLength memory)
 
     UMV.write (cS1 memory) address d1
     UMV.write (cS2 memory) address d2
@@ -48,11 +49,36 @@ insert word = do
     UMV.write (cS5 memory) address d5
     UMV.write (cS6 memory) address d6
 
+write :: [Word8] -> StateT Carousel IO ()
+write bytes = do
+    memory <- get
+    l <- gets cLength
+    let bl = length bytes
+    let position = cPosition memory - 1
+    let addresses = [a | x <- [position .. position + bl - 1], let a = mod x l]
+    let writeData = zip addresses bytes
+    forM_ writeData (\(address, byte) -> do
+
+            let d1 = (byte .&. 0x01) .>>. 0
+            let d2 = (byte .&. 0x02) .>>. 1
+            let d3 = (byte .&. 0x04) .>>. 2
+            let d4 = (byte .&. 0x08) .>>. 3
+            let d5 = (byte .&. 0x10) .>>. 4
+            let d6 = (byte .&. 0x20) .>>. 5
+            
+            UMV.write (cS1 memory) address d1
+            UMV.write (cS2 memory) address d2
+            UMV.write (cS3 memory) address d3
+            UMV.write (cS4 memory) address d4
+            UMV.write (cS5 memory) address d5
+            UMV.write (cS6 memory) address d6
+        )
+
 push ::  Word8 -> StateT Carousel IO Word8
-push word = do
+push byte = do
     output <- last
-    insert word
     _ <- shift
+    insert byte
     return output
 
 head :: StateT Carousel IO Word8
@@ -142,10 +168,10 @@ toList' memory = do
 
 new :: Int -> IO Carousel
 new len = do
-    s1 <- UMV.replicate len 0
-    s2 <- UMV.replicate len 0
-    s3 <- UMV.replicate len 0
-    s4 <- UMV.replicate len 0
-    s5 <- UMV.replicate len 0
-    s6 <- UMV.replicate len 1
+    s1 <- UMV.generate len (\i -> fromIntegral $ i .&. 1)
+    s2 <- UMV.generate len (\i -> fromIntegral $ (i .>>. 1) .&. 1)
+    s3 <- UMV.generate len (\i -> fromIntegral $ (i .>>. 2) .&. 1)
+    s4 <- UMV.generate len (\i -> fromIntegral $ (i .>>. 3) .&. 1)
+    s5 <- UMV.generate len (\i -> fromIntegral $ (i .>>. 4) .&. 1)
+    s6 <- UMV.generate len (\i -> fromIntegral $ (i .>>. 5) .&. 1)
     return $ Carousel {cS1 = s1, cS2 = s2, cS3 = s3, cS4 = s4, cS5 = s5, cS6 = s6, cLength = len, cPosition = 0}
