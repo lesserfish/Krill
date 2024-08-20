@@ -7,6 +7,7 @@ module AppleI.Terminal (
     tickN
 ) where
 
+import Data.Bits (xor)
 import Data.Word
 import Control.Monad.State
 import qualified AppleI.Terminal.Carousel as C
@@ -39,7 +40,8 @@ data Terminal = Terminal {
     dCursorRegister     :: C.Carousel,
     dVideoBuffer        :: M.Memory,
     dCurrentLine        :: Int,
-    dVTracker           :: Int
+    dVTracker           :: Int,
+    dCounter            :: Int
 }
 
 new :: IO Terminal
@@ -57,7 +59,8 @@ new = do
                       , dVideoBuffer = vb
                       , dCursorRegister = cb
                       , dCurrentLine = 23
-                      , dVTracker = 0}
+                      , dVTracker = 0
+                      , dCounter = 6000}
 
 updateState :: TState -> StateT Terminal IO ()
 updateState st = modify (\term -> term {dState = st})
@@ -67,6 +70,10 @@ updateChar char = modify (\term -> term {dChar = char})
 
 offsetLine :: Int -> StateT Terminal IO ()
 offsetLine offset = modify (\term -> term {dCurrentLine = mod (dCurrentLine term + offset) 24})
+
+offsetCounter :: Int -> StateT Terminal IO ()
+offsetCounter offset = modify (\term -> term {dCounter = dCounter term + offset})
+
 
 offsetVTracker :: Int -> StateT Terminal IO ()
 offsetVTracker offset = modify (\term -> term {dVTracker = mod (dVTracker term + offset) 960})
@@ -213,13 +220,22 @@ updateDisplay = do
     when (shiftPos == 0) (do
         linebuff <- liftIO $ C.toList lr
         pushLine linebuff
-        offsetLine (-1))
+        offsetLine (-1)
+        offsetCounter (-1))
 
+updateCursorChar :: StateT Terminal IO ()
+updateCursorChar = do
+    counter <- gets dCounter
+    when (counter < 0) (do
+        cursorChar <- gets dCursorChar
+        modify (\term -> term {dCursorChar = xor cursorChar 0x20, dCounter = 6000}) -- Hacky number owo
+        )
 
 normalTick :: StateT Terminal IO ()
 normalTick = do
     updateCarousel
     updateDisplay
+    updateCursorChar
 
 clearTick :: StateT Terminal IO ()
 clearTick = do
