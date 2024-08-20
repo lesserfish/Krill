@@ -29,10 +29,7 @@ import qualified AppleI.Memory as M
 -- Is there even any point in simulating this accurately. Even what I did is probably too much.
 --
 
-data TState = NORMAL | CLEAR_REQUEST
-
 data Terminal = Terminal {
-    dState              :: TState,
     dCursorChar         :: Word8,
     dChar               :: Word8,
     dVideoShiftRegister :: C.Carousel,
@@ -51,8 +48,8 @@ new = do
     lr <- C.new 40
     cb' <- C.new 960
     cb <- execStateT (C.write (0 : replicate 959 1) >> C.shift) cb'
-    return $ Terminal { dState = NORMAL 
-                      , dCursorChar = 0x00
+    return $ Terminal { 
+                        dCursorChar = 0x00
                       , dChar = 0x00
                       , dVideoShiftRegister = vsr
                       , dLineRegister = lr
@@ -61,9 +58,6 @@ new = do
                       , dCurrentLine = 23
                       , dVTracker = 0
                       , dCounter = 6000}
-
-updateState :: TState -> StateT Terminal IO ()
-updateState st = modify (\term -> term {dState = st})
 
 updateChar :: Word8 -> StateT Terminal IO ()
 updateChar char = modify (\term -> term {dChar = char})
@@ -143,16 +137,19 @@ pushLR inbyte = do
 cr :: StateT Terminal IO ()
 cr = do
     vshift <- gets (C.cPosition . dVideoShiftRegister)
-    vt <- gets dVTracker
     lshift <- gets (C.cPosition . dLineRegister)
-    let offset = 1 + mod (-lshift) 40
-    writeVSR (replicate (41 + mod (-lshift) 40) 0x20)
-    _ <- shiftNCB offset
-    let disp = mod (40 - lshift) 40
-    when (mod (vshift + disp) 960 == vt) (do
-            shiftNVSR (-40)
-            shiftNCB (-40)
-            offsetVTracker 40
+    vt <- gets dVTracker
+
+    writeVSR (replicate (41 + mod (-lshift) 40) 0x20) -- Clear the remainder of this line and the entire next line.
+
+    let offset = 1 + mod (-lshift) 40  -- How many characters are left in the current line.
+    _ <- shiftNCB offset               -- Move to the start of the next line
+
+    let disp = mod (40 - lshift) 40    -- TBH, I don't really get it. It's how many characters are left in this line.
+    when (mod (vshift + disp) 960 == vt) (do -- We check whether after moving to the next line, we overflow and need to scroll
+            shiftNVSR (-40)            -- We scroll the screen
+            shiftNCB (-40)             -- We scroll the cursor
+            offsetVTracker 40          -- We update the vertical tracker
         )
 
 handleKey :: Word8 -> StateT Terminal IO ()
@@ -171,11 +168,12 @@ pushChar char = do
     vt <- gets dVTracker
     byte <- pushVSR char
     _ <- pushLR byte
-    when (vshift == vt) (do
-        shiftNVSR (-40)
-        shiftNCB (-40)
-        offsetVTracker 40
-        updateState CLEAR_REQUEST
+    when (vshift == vt) (do         -- If we are writing to the last character in the screen (and thus need a scroll)
+        shiftNVSR (-2)              -- Scroll into position
+        writeVSR (replicate 40 0x20)-- Erase entire next line
+        shiftNVSR (-38)             -- Scroll the screen (This should be 40, but we already scrolled 2 before)
+        shiftNCB (-40)              -- Scroll the cursor
+        offsetVTracker 40           -- Update the vertical tracker
         )
 
 pushLine :: [Word8] -> StateT Terminal IO ()
@@ -231,28 +229,11 @@ updateCursorChar = do
         modify (\term -> term {dCursorChar = xor cursorChar 0x20, dCounter = 6000}) -- Hacky number owo
         )
 
-normalTick :: StateT Terminal IO ()
-normalTick = do
+tick' :: StateT Terminal IO ()
+tick' = do
     updateCarousel
     updateDisplay
     updateCursorChar
-
-clearTick :: StateT Terminal IO ()
-clearTick = do
-    cursor <- shiftCB
-    if cursor == 0 
-        then do
-            writeVSR (replicate 40 0x20)
-            shiftNCB (-1)
-            updateState NORMAL
-        else simpleShift
-
-tick' :: StateT Terminal IO ()
-tick' = do
-    st <- gets dState
-    case st of 
-        NORMAL -> normalTick
-        CLEAR_REQUEST -> clearTick
 
 tick :: Terminal -> IO Terminal
 tick = execStateT tick'
