@@ -23,9 +23,9 @@ executable AppleI
     other-modules:      AppleI.Bus
                     ,   AppleI.Keyboard
                     ,   AppleI.Terminal
+                    ,   AppleI.Terminal.Carousel
                     ,   AppleI.Memory
                     ,   AppleI.Main
-                    ,   AppleI.Carousel
                     ,   Frontend.Internal
                     ,   Frontend.Main
     -- other-extensions:

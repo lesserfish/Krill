@@ -1,11 +1,15 @@
-    module AppleI.Terminal where
+module AppleI.Terminal (
+    Terminal,
+    sendChar,
+    new,
+    getVBuffer,
+    tick,
+    tickN
+) where
 
-import System.IO (hFlush, stdout)
-import Text.Printf
 import Data.Word
 import Control.Monad.State
 import qualified AppleI.Terminal.Carousel as C
-import qualified AppleI.Terminal.ThisSucks as FUCK
 import qualified AppleI.Memory as M
 
 -- There is very little documentation on the APPLE I terminal.
@@ -40,11 +44,11 @@ data Terminal = Terminal {
 
 new :: IO Terminal
 new = do
-    vb <- M.fromList M.ReadAccess (replicate (5 * 5) 0xA0)
-    vsr <- C.new 25
-    lr <- C.new 5
-    cb' <- C.new 25
-    cb <- execStateT (C.write (0 : replicate 24 1) >> C.shift) cb'
+    vb <- M.fromList M.ReadAccess (replicate (40 * 24) 0xA0)
+    vsr <- C.new 960
+    lr <- C.new 40
+    cb' <- C.new 960
+    cb <- execStateT (C.write (0 : replicate 959 1) >> C.shift) cb'
     return $ Terminal { dState = NORMAL 
                       , dCursorChar = 0x00
                       , dChar = 0x00
@@ -52,7 +56,7 @@ new = do
                       , dLineRegister = lr
                       , dVideoBuffer = vb
                       , dCursorRegister = cb
-                      , dCurrentLine = 4
+                      , dCurrentLine = 23
                       , dVTracker = 0}
 
 updateState :: TState -> StateT Terminal IO ()
@@ -62,10 +66,10 @@ updateChar :: Word8 -> StateT Terminal IO ()
 updateChar char = modify (\term -> term {dChar = char})
 
 offsetLine :: Int -> StateT Terminal IO ()
-offsetLine offset = modify (\term -> term {dCurrentLine = mod (dCurrentLine term + offset) 5})
+offsetLine offset = modify (\term -> term {dCurrentLine = mod (dCurrentLine term + offset) 24})
 
 offsetVTracker :: Int -> StateT Terminal IO ()
-offsetVTracker offset = modify (\term -> term {dVTracker = mod (dVTracker term + offset) 25})
+offsetVTracker offset = modify (\term -> term {dVTracker = mod (dVTracker term + offset) 960})
 
 sendChar :: Word8 -> Terminal -> Terminal
 sendChar char term = term' where
@@ -134,14 +138,14 @@ cr = do
     vshift <- gets (C.cPosition . dVideoShiftRegister)
     vt <- gets dVTracker
     lshift <- gets (C.cPosition . dLineRegister)
-    let offset = 1 + mod ( - lshift) 5
-    writeVSR (replicate (6 + mod (5 - lshift) 5) 0x20)
+    let offset = 1 + mod (-lshift) 40
+    writeVSR (replicate (41 + mod (-lshift) 40) 0x20)
     _ <- shiftNCB offset
-    let disp = mod (5 - lshift) 5
-    when (mod (vshift + disp) 25 == vt) (do
-            shiftNVSR (-5)
-            shiftNCB (-5)
-            offsetVTracker 5
+    let disp = mod (40 - lshift) 40
+    when (mod (vshift + disp) 960 == vt) (do
+            shiftNVSR (-40)
+            shiftNCB (-40)
+            offsetVTracker 40
         )
 
 handleKey :: Word8 -> StateT Terminal IO ()
@@ -161,9 +165,9 @@ pushChar char = do
     byte <- pushVSR char
     _ <- pushLR byte
     when (vshift == vt) (do
-        shiftNVSR (-5)
-        shiftNCB (-5)
-        offsetVTracker 5
+        shiftNVSR (-40)
+        shiftNCB (-40)
+        offsetVTracker 40
         updateState CLEAR_REQUEST
         )
 
@@ -171,7 +175,7 @@ pushLine :: [Word8] -> StateT Terminal IO ()
 pushLine linebuff = do
     videobuff <- gets dVideoBuffer
     line <- gets dCurrentLine
-    let address = [line * 5 + x | x <- [0..5]]
+    let address = [line * 40 + x | x <- [0..39]]
     let linedata = zip address linebuff
     forM_ linedata (\(addr, char) -> do
             let addr' = fromIntegral addr
@@ -215,7 +219,7 @@ clearTick = do
     cursor <- shiftCB
     if cursor == 0 
         then do
-            writeVSR (replicate 5 0x20)
+            writeVSR (replicate 40 0x20)
             shiftNCB (-1)
             updateState NORMAL
         else simpleShift

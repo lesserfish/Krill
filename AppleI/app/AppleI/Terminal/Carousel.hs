@@ -1,6 +1,5 @@
 module AppleI.Terminal.Carousel where
 
-import Text.Printf
 import Prelude hiding (head, last)
 import qualified Data.Vector.Unboxed.Mutable as UMV
 import Data.Word

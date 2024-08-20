@@ -13,7 +13,6 @@ import Control.Monad.State
 import Data.Word
 import Data.Bits
 import qualified AppleI.Terminal as Terminal
-import AppleI.Terminal (handleKey)
 
 _CHAR_WIDTH :: CInt 
 _CHAR_WIDTH = 16
@@ -33,8 +32,8 @@ data Context = Context {
 initSDL :: FilePath -> IO Context
 initSDL filepath = do
     initializeAll
-    let winsize = 2 * V2 (5 * _CHAR_WIDTH) (5 * _CHAR_HEIGHT)
-    let texsize = V2 (5 * _CHAR_WIDTH) (5 * _CHAR_HEIGHT)
+    let winsize = 2 * V2 (40 * _CHAR_WIDTH) (24 * _CHAR_HEIGHT)
+    let texsize = V2 (40 * _CHAR_WIDTH) (24 * _CHAR_HEIGHT)
     window <- createWindow "Apple I" defaultWindow{windowInitialSize =  winsize}
     renderer <- createRenderer window (-1) defaultRenderer{ rendererTargetTexture = True }
     fontSurf <- loadBMP filepath
@@ -65,12 +64,12 @@ renderVBuffer buffer = do
     let fontTex = fontTexture ctx 
     let winText = windowTexture ctx
     let renderer = sdlRenderer ctx
-    let pixels = [(x, y) | x <- [0..4], y <- [0..4]]
+    let pixels = [(x, y) | x <- [0..39], y <- [0..23]]
     rendererRenderTarget renderer $= Just winText
     clear renderer
 
     mapM_ (\(x, y) -> do
-        let byte = buffer !! (y * 5 + x)
+        let byte = buffer !! (y * 40 + x)
         let src_rect = fontChar byte
         let tgt_rect = screenRect (x, y)
         copy renderer fontTex (Just src_rect) (Just tgt_rect)
@@ -126,7 +125,7 @@ control = do
 tick :: StateT Context IO ()
 tick = do
     ctx <- get
-    term' <- liftIO $ Term.tickN 25 (terminal ctx)
+    term' <- liftIO $ Term.tickN 960 (terminal ctx)
     put ctx{terminal = term'}
 
 appleKey :: Text -> Maybe Word8
