@@ -24,6 +24,7 @@ cpuReadByte apple address
     | 0xD010 == address = readKBD apple
     | 0xD011 == address = readKBDCR apple
     | 0xD012 == address = readDSP apple
+    | 0xD0F2 == address = readDSP apple -- Remove this
     | 0xD013 == address = readDSPCR apple
     | 0xFF00 <= address && address <= 0xFFFF = readROM apple address
     | otherwise = return 0xA1

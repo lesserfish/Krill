@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Frontend.Internal where
+module Frontend where
 
 import qualified AppleI.Bus as AppleI
 import Data.Text (Text)
@@ -25,8 +25,8 @@ data Context = Context {
     machine       :: AppleI.AppleI
 }
 
-initSDL :: [Word8] -> FilePath -> IO Context
-initSDL romData fontFP = do
+initialize :: [Word8] -> [Word8] -> [Word8] -> FilePath -> IO Context
+initialize biosData ciData cassetteData fontFP = do
     initializeAll
     let winsize = 2 * V2 (40 * _CHAR_WIDTH) (24 * _CHAR_HEIGHT)
     let texsize = V2 (40 * _CHAR_WIDTH) (24 * _CHAR_HEIGHT)
@@ -35,7 +35,7 @@ initSDL romData fontFP = do
     fontSurf <- loadBMP fontFP
     fontText <- createTextureFromSurface renderer fontSurf
     winText <- createTexture renderer RGBA8888 TextureAccessTarget texsize
-    m <- AppleI.new romData
+    m <- AppleI.new biosData ciData cassetteData
     AppleI.reset m
     return Context {  sdlWindow = window
                     , sdlRenderer = renderer

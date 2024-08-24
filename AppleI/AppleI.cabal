@@ -26,8 +26,7 @@ executable AppleI
                     ,   AppleI.Terminal.Carousel
                     ,   AppleI.Memory
                     ,   AppleI.Main
-                    ,   Frontend.Internal
-                    ,   Frontend.Main
+                    ,   Frontend
     -- other-extensions:
     build-depends:      base ^>=4.17.2.1
                     ,   K6502
@@ -36,6 +35,11 @@ executable AppleI
                     ,   sdl2 >= 2.5.5.0
                     ,   text >= 2.0.2
                     ,   bytestring >= 0.11.5.3
+                    ,   optparse-applicative >= 0.18.0.0
+                    ,   directory >= 1.3.7.1
+
+    data-files:         Assets/font.bmp
+                    ,   Assets/wozmon.bin
 
     hs-source-dirs:     app
 
