@@ -1,1 +1,1 @@
-packages: ./K6502/ ./AppleI/
+packages: ./K6502/ ./AppleI/ ./Disassembler/

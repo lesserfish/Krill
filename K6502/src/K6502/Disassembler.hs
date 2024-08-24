@@ -1,9 +1,15 @@
-module K6502.Disassembler where
+module K6502.Disassembler (
+    disassembleL,
+    disassembleL',
+    disassembleM,
+    disassembleM',
+) where
 
 import Utils
 import K6502.Types
 import Data.Word
 import Data.Int
+import Text.Printf
 import qualified Data.Map as Map
 
 opInfo :: Word8 -> Maybe (String, ADDR_MODE)
@@ -210,8 +216,11 @@ disassemble interface addr = do
     case info of
         Just (opname, addr_mode) -> do
             (args, offset) <- disassembleArg interface addr_mode (addr + 1)
-            return (opname ++ " " ++ args ++ replicate (15 - length args) ' ' ++ show addr_mode, offset + 1)
-        Nothing -> return ("", 1)
+            let str = printf "%05X : %02X    %10s   %15s              [ %12s ]" addr opcode opname args (show addr_mode) :: String
+            return (str, offset + 1)
+        Nothing -> do
+            let str = printf "%05X : %02X    %10s   %15s              [ %12s ]" addr opcode "???" "???" "???" :: String
+            return (str, 1)
 
 overflows :: Word16 -> Word16 -> Bool
 overflows a b = s < a || s < b where
@@ -226,6 +235,19 @@ disassembleL interface start end
         rest <- disassembleL interface start' end 
         return $ (start, str) : rest
 
-disassembleM' :: Interface -> Word16 -> Word16 -> IO (Map.Map Word16 String)
-disassembleM' interface start end = Map.fromList <$> disassembleL interface start end
+disassembleM :: Interface -> Word16 -> Word16 -> IO (Map.Map Word16 String)
+disassembleM interface start end = Map.fromList <$> disassembleL interface start end
 
+binaryInterface :: [Word8] -> Interface
+binaryInterface bin = Interface {iReadByte = r, iWriteByte = w, iPeekByte = p} where
+    r a = return $ bin !! fromIntegral a
+    w _ _ = return ()
+    p = r
+
+disassembleL' :: [Word8] -> IO [(Word16, String)]
+disassembleL' bin = disassembleL (binaryInterface bin) 0 end where
+    end = fromIntegral $ length bin
+
+disassembleM' :: [Word8] -> IO (Map.Map Word16 String)
+disassembleM' bin = disassembleM (binaryInterface bin) 0 end where
+    end = fromIntegral $ length bin
