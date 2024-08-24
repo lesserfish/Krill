@@ -32,7 +32,7 @@ cpuReadByte' apple address
 cpuReadByte :: AppleI -> Word16 -> IO Word8
 cpuReadByte apple address = do
     byte <- cpuReadByte' apple address
-    when (address < 0xFF00 
+    when (address == 0xFF30 
             && address /= 0xD011 
             && address /= 0xD012
             && address /= 0xD010
