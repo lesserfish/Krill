@@ -169,6 +169,11 @@ handleKey 0x8D = do
     cr
     simpleShift
     updateChar 0x00
+handleKey 0xDF = do
+    shiftNCB (-1)
+    simpleShift
+    updateChar 0x00
+
 handleKey char = do
     pushChar char
     _ <- shiftCB

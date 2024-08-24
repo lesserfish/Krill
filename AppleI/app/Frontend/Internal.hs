@@ -99,6 +99,8 @@ handleKeyboard ke = do
     when (keyboardEventKeyMotion ke == Pressed) (do
             case keysymKeycode . keyboardEventKeysym $ ke of
                 KeycodeReturn -> sendKey 0x8D
+                KeycodeBackspace -> sendKey 0xDF
+                KeycodeEscape -> sendKey 0x9B
                 _ -> return ()
         )
 
@@ -121,16 +123,10 @@ control = do
     events <- pollEvents
     mapM_ handleEvents events
 
-debug :: StateT Context IO ()
-debug = do
-    ctx <- get
-    liftIO $ AppleI.debug (machine ctx)
-
 tick :: StateT Context IO ()
 tick = do
     ctx <- get
     liftIO $ AppleI.tickN 960 (machine ctx)
-    debug
 
 appleKey :: Text -> Maybe Word8
 appleKey "@"               = Just 0x80
@@ -187,10 +183,10 @@ appleKey "x"               = Just 0xD8
 appleKey "y"               = Just 0xD9
 appleKey "z"               = Just 0xDA
 appleKey "["               = Just 0x9B
-appleKey "\\"              = Just 0x9C
-appleKey "]"               = Just 0x9D
-appleKey "^"               = Just 0x9E
-appleKey "_"               = Just 0x9F
+appleKey "\\"              = Just 0xDC
+appleKey "]"               = Just 0xDD
+appleKey "^"               = Just 0xDE
+appleKey "_"               = Just 0xDF
 appleKey " "               = Just 0xA0
 appleKey "!"               = Just 0xA1
 appleKey "\""              = Just 0xA2

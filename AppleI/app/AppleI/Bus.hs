@@ -1,11 +1,11 @@
 module AppleI.Bus where
 
-import Text.Printf
 import qualified AppleI.Memory as M
 import qualified AppleI.Keyboard as KB
 import qualified AppleI.Terminal as T
 import qualified K6502
 
+import Text.Printf
 import Data.IORef
 import Data.Word
 import Control.Monad.State 
@@ -19,8 +19,8 @@ data AppleI = AppleI {
 }
 
 
-cpuReadByte' :: AppleI -> Word16 -> IO Word8
-cpuReadByte' apple address
+cpuReadByte :: AppleI -> Word16 -> IO Word8
+cpuReadByte apple address
     | 0x0000 <= address && address <= 0x1FFF = readRAM apple address -- 8K bytes of ram (4K more than the supplied amount)
     | 0xD010 == address = readKBD apple
     | 0xD011 == address = readKBDCR apple
@@ -28,18 +28,6 @@ cpuReadByte' apple address
     | 0xD013 == address = readDSPCR apple
     | 0xFF00 <= address && address <= 0xFFFF = readROM apple address
     | otherwise = return 0xA1
-
-cpuReadByte :: AppleI -> Word16 -> IO Word8
-cpuReadByte apple address = do
-    byte <- cpuReadByte' apple address
-    when (address == 0xFF30 
-            && address /= 0xD011 
-            && address /= 0xD012
-            && address /= 0xD010
-            && address /= 0xD013
-            ) (printf "Read byte %02X from address %04X \n" byte address)
-    return byte
-
 
 cpuWriteByte' :: AppleI -> Word16 -> Word8 -> IO ()
 cpuWriteByte' apple address byte 
@@ -50,12 +38,10 @@ cpuWriteByte' apple address byte
     | 0xD013 == address = writeDSPCR apple byte
     | otherwise = return ()
 
-cpuWriteByte :: AppleI -> Word16 ->  Word8 -> IO ()
+
+cpuWriteByte :: AppleI -> Word16 -> Word8 -> IO ()
 cpuWriteByte apple address byte = do
     cpuWriteByte' apple address byte
-    --when (address == 0xD012) (printf "Write byte %02X to display\n" byte)
-    --printf "CPU write address %04X  <= %02X\n" address byte
-
 
 readRAM :: AppleI -> Word16 -> IO Word8
 readRAM apple address = do
@@ -151,12 +137,6 @@ reset apple = do
     writeIORef (applTerminal apple) term'
 
 
-printROM :: [Word8] -> IO ()
-printROM [] = printf "\n"
-printROM (y:ys) = do
-    printf "%02X " y
-    printROM ys
-
 new :: [Word8] -> IO AppleI
 new romData = do
     cpu <- newIORef K6502.new
@@ -179,9 +159,3 @@ getVBuffer apple = do
     term <- liftIO . readIORef . applTerminal $ apple
     T.getVBuffer term
 
-
-debug :: AppleI -> IO ()
-debug apple = do
-    cpu <- liftIO . readIORef . applCPU $ apple
-    --print $ "CPU: " ++ (show . K6502.rIP . K6502.kRegisters $ cpu)
-    return ()
