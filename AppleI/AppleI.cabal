@@ -35,6 +35,7 @@ executable AppleI
                     ,   mtl >= 2.2.2
                     ,   sdl2 >= 2.5.5.0
                     ,   text >= 2.0.2
+                    ,   bytestring >= 0.11.5.3
 
     hs-source-dirs:     app
 

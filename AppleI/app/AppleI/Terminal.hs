@@ -1,6 +1,8 @@
 module AppleI.Terminal (
     Terminal,
-    sendChar,
+    reset,
+    writeChar,
+    readChar,
     new,
     getVBuffer,
     tick,
@@ -59,6 +61,11 @@ new = do
                       , dVTracker = 0
                       , dCounter = 6000}
 
+reset :: StateT Terminal IO ()
+reset = do
+    term <- liftIO new
+    put term
+
 updateChar :: Word8 -> StateT Terminal IO ()
 updateChar char = modify (\term -> term {dChar = char})
 
@@ -72,10 +79,15 @@ offsetCounter offset = modify (\term -> term {dCounter = dCounter term + offset}
 offsetVTracker :: Int -> StateT Terminal IO ()
 offsetVTracker offset = modify (\term -> term {dVTracker = mod (dVTracker term + offset) 960})
 
-sendChar :: Word8 -> Terminal -> Terminal
-sendChar char term = term' where
+writeChar :: Word8 -> Terminal -> Terminal
+writeChar char term = term' where
     currentChar = dChar term
     term' = if currentChar > 0x7F then term else term {dChar = char}
+
+readChar :: Terminal -> Word8
+readChar term = currentChar  where
+    currentChar = dChar term
+
 
 getVBuffer :: Terminal -> IO [Word8]
 getVBuffer term = do
@@ -153,7 +165,7 @@ cr = do
         )
 
 handleKey :: Word8 -> StateT Terminal IO ()
-handleKey 0xFF = do
+handleKey 0x8D = do
     cr
     simpleShift
     updateChar 0x00
