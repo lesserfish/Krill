@@ -2,8 +2,6 @@
 
 module Frontend.Internal where
 
-import qualified AppleI.Terminal as Term
-
 import qualified AppleI.Bus as AppleI
 import Data.Text (Text)
 import SDL hiding (get)
@@ -94,6 +92,12 @@ getVBuffer = do
 exitProgram :: StateT Context IO ()
 exitProgram = modify (\ctx -> ctx{exitRequest = True})
 
+reset :: StateT Context IO ()
+reset = do
+    ctx <- get
+    let apple = machine ctx
+    liftIO $ AppleI.reset apple
+
 handleKeyboard :: SDL.KeyboardEventData -> StateT Context IO ()
 handleKeyboard ke = do
     when (keyboardEventKeyMotion ke == Pressed) (do
@@ -101,6 +105,7 @@ handleKeyboard ke = do
                 KeycodeReturn -> sendKey 0x8D
                 KeycodeBackspace -> sendKey 0xDF
                 KeycodeEscape -> sendKey 0x9B
+                KeycodeF1 -> reset
                 _ -> return ()
         )
 

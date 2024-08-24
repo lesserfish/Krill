@@ -5,7 +5,6 @@ import qualified AppleI.Keyboard as KB
 import qualified AppleI.Terminal as T
 import qualified K6502
 
-import Text.Printf
 import Data.IORef
 import Data.Word
 import Control.Monad.State 
