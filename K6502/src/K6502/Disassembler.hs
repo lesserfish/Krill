@@ -167,47 +167,47 @@ opInfo 0x98 = Just ("TYA", IMPLICIT)
 opInfo opcode = Nothing
 
 
-disassembleArg :: Interface -> ADDR_MODE -> Word16 -> IO (String, Word16)
-disassembleArg _ IMPLICIT _ = return ("", 0)
-disassembleArg _ ACCUMULATOR _ = return ("A", 0)
+disassembleArg :: Interface -> ADDR_MODE -> Word16 -> IO ([Word8], String, Word16)
+disassembleArg _ IMPLICIT _ = return ([], "", 0)
+disassembleArg _ ACCUMULATOR _ = return ([], "A", 0)
 disassembleArg interface IMMEDIATE addr = do
     argval <- iPeekByte interface addr
-    return ("#$" ++ toHex1 argval, 1)
+    return ([argval], "#$" ++ toHex1 argval, 1)
 disassembleArg interface ZEROPAGE addr = do
     argval <- iPeekByte interface addr
-    return ("$" ++ toHex1 argval, 1)
+    return ([argval], "$" ++ toHex1 argval, 1)
 disassembleArg interface ZEROPAGE_X addr = do
     argval <- iPeekByte interface addr
-    return ("$" ++ toHex1 argval ++ ",X", 1)
+    return ([argval], "$" ++ toHex1 argval ++ ",X", 1)
 disassembleArg interface ZEROPAGE_Y addr = do
     argval <- iPeekByte interface addr
-    return ("$" ++ toHex1 argval ++ ",Y", 1)
+    return ([argval], "$" ++ toHex1 argval ++ ",Y", 1)
 disassembleArg interface RELATIVE addr = do
     argval <- iPeekByte interface addr
     let offset = (fromIntegral argval :: Int8)
-    return ("*" ++ toHex1 argval ++ " [" ++ show offset ++ "]", 1)
+    return ([argval], "*" ++ toHex1 argval ++ " [" ++ show offset ++ "]", 1)
 disassembleArg interface ABSOLUTE addr = do
     a1 <- iPeekByte interface addr
     a2 <- iPeekByte interface (addr + 1)
-    return ("$" ++ toHex1 a2 ++ toHex1 a1 , 2)
+    return ([a1, a2], "$" ++ toHex1 a2 ++ toHex1 a1 , 2)
 disassembleArg interface ABSOLUTE_X addr = do
     a1 <- iPeekByte interface addr
     a2 <- iPeekByte interface (addr + 1)
-    return ("$" ++ toHex1 a2 ++ toHex1 a1 ++ ",X", 2)
+    return ([a1, a2], "$" ++ toHex1 a2 ++ toHex1 a1 ++ ",X", 2)
 disassembleArg interface ABSOLUTE_Y addr = do
     a1 <- iPeekByte interface addr
     a2 <- iPeekByte interface (addr + 1)
-    return ("$" ++ toHex1 a2 ++ toHex1 a1 ++ ",Y", 2)
+    return ([a1, a2], "$" ++ toHex1 a2 ++ toHex1 a1 ++ ",Y", 2)
 disassembleArg interface INDIRECT addr = do
     a1 <- iPeekByte interface addr
     a2 <- iPeekByte interface (addr + 1)
-    return ("($" ++ toHex1 a2 ++ toHex1 a1 ++ ")", 2)
+    return ([a1, a2], "($" ++ toHex1 a2 ++ toHex1 a1 ++ ")", 2)
 disassembleArg interface INDIRECT_X addr = do
     a <- iPeekByte interface addr
-    return ("($" ++ toHex1 a ++ ", X)", 1)
+    return ([a], "($" ++ toHex1 a ++ ", X)", 1)
 disassembleArg interface INDIRECT_Y addr = do
     a <- iPeekByte interface addr
-    return ("($" ++ toHex1 a ++ "), Y", 1)
+    return ([a], "($" ++ toHex1 a ++ "), Y", 1)
 
 disassemble :: Interface -> Word16 -> IO (String, Word16)
 disassemble interface addr = do
@@ -215,11 +215,13 @@ disassemble interface addr = do
     let info = opInfo opcode
     case info of
         Just (opname, addr_mode) -> do
-            (args, offset) <- disassembleArg interface addr_mode (addr + 1)
-            let str = printf "%05X : %02X    %10s   %15s              [ %12s ]" addr opcode opname args (show addr_mode) :: String
+            (argc, args, offset) <- disassembleArg interface addr_mode (addr + 1)
+            let hex = concatMap (\t -> printf "%02X " t :: String) (opcode : argc)
+            let str = printf "%05X : %-20s    %10s   %-15s              [ %12s ]" addr hex opname args (show addr_mode) :: String
             return (str, offset + 1)
         Nothing -> do
-            let str = printf "%05X : %02X    %10s   %15s              [ %12s ]" addr opcode "???" "???" "???" :: String
+            let hex = printf "%02X " opcode :: String
+            let str = printf "%05X : %-20s    %10s   %-15s              [ %12s ]" addr hex "???" "" "???" :: String
             return (str, 1)
 
 overflows :: Word16 -> Word16 -> Bool
