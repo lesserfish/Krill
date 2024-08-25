@@ -1,19 +1,15 @@
-## Apple I
+## Disassembler
 
 
-This is a rudimentary Apple I emulator. It runs both wozmon and Basic. Follow instructions below to get it running.
+This is a simple 6502 disassembler. Usage is as follows:
 
-### Running
+    6502 Disassembler
 
+    Usage: Disassembler (-i|--in Binary) [-o|--out ARG]
 
-### Resources
+    Available options:
+      -i,--in Binary           Path to the 6502 binary file
+      -o,--out ARG             Path to the output file. (Defaults to STDOUT)
+      -h,--help                Show this help text
 
-The following resources were pretty handy:
-
-1. [This stackexchange thread](https://retrocomputing.stackexchange.com/questions/13228/how-did-the-apple-1-video-circuit-work)
-2. [This blog post about the shift register VRAM](http://www.righto.com/2022/04/inside-apple-1s-shift-register-memory.html)
-3. [Another blog plot about the terminal](https://www.sbprojects.net/projects/apple1/terminal.php)
-4. [This overview on how the Apple I works](https://www.youtube.com/watch?v=36NgkpctW6k)
-5. [This incredibly entertaining video describing the history of the Apple I](https://www.youtube.com/watch?v=BHeUbAVllJo)
-6. [This incredible explanation on the terminal](https://github.com/The8BitEnthusiast/apple-1-video-terminal-on-fpga)
 
