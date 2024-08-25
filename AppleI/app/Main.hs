@@ -39,7 +39,6 @@ loop = do
 data Args = Args
   { biosPath       :: FilePath
   , cassettePath   :: FilePath
-  , ciPath         :: FilePath
   , fontPath       :: FilePath
   }
 
@@ -57,30 +56,22 @@ argsParser = Args
        <> short 'c'
        <> metavar "CASSETTE"
        <> help "Path to the cassette data"
-       <> value "" -- default to empty string
-       <> showDefault )
-  <*> strOption
-        ( long "cinterface"
-       <> short 'i'
-       <> metavar "CASSETTE INTERFACE"
-       <> help "Path to the cassette interface data"
-       <> value "Assets/cassette-interface.bin" -- default to empty string
+       <> value "Assets/basic.bin"
        <> showDefault )
   <*> strOption
         ( long "font"
        <> short 'f'
        <> metavar "FONT"
        <> help "Path to the font file"
-       <> value "Assets/font.bmp" -- default font path
+       <> value "Assets/font.bmp" 
        <> showDefault )
 
 start :: Args -> IO()
 start args = do
     let fontFP = fontPath args
     biosData <- loadBios (biosPath args)
-    ciData <- loadCI (ciPath args)
     cassetteData <- loadCassette (cassettePath args)
-    ctx <- initialize biosData ciData cassetteData fontFP
+    ctx <- initialize biosData cassetteData fontFP
     _ <- execStateT loop ctx
     return ()
 

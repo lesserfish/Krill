@@ -5,6 +5,7 @@ import qualified AppleI.Keyboard as KB
 import qualified AppleI.Terminal as T
 import qualified K6502
 
+import Text.Printf
 import Data.IORef
 import Data.Word
 import Control.Monad.State 
@@ -14,46 +15,54 @@ data AppleI = AppleI {
     ,   applKeyboard  :: IORef KB.Keyboard
     ,   applRAM       :: M.Memory
     ,   applTerminal  :: IORef T.Terminal
-    ,   applROM       :: M.Memory
+    ,   applBIOS      :: M.Memory
 }
 
 
 cpuReadByte :: AppleI -> Word16 -> IO Word8
 cpuReadByte apple address
-    | 0x0000 <= address && address <= 0x1FFF = readRAM apple address -- 8K bytes of ram (4K more than the supplied amount)
+    | 0x0000 <= address && address <= 0x1FFF = readRAM 0x0000 apple address -- RAM mapped in 0x0000 : 0x0FFF
     | 0xD010 == address = readKBD apple
     | 0xD011 == address = readKBDCR apple
     | 0xD012 == address = readDSP apple
-    | 0xD0F2 == address = readDSP apple -- Remove this
     | 0xD013 == address = readDSPCR apple
+    | 0xE000 <= address && address <= 0xEFFF = readRAM 0xD000 apple address  -- RAM mapped in 0xE000 : 0xEFFF
     | 0xFF00 <= address && address <= 0xFFFF = readROM apple address
-    | otherwise = return 0xA1
+    | otherwise = error (printf "Attempted to read unused memory address %04X" address)
 
-cpuWriteByte' :: AppleI -> Word16 -> Word8 -> IO ()
-cpuWriteByte' apple address byte 
-    | 0x0000 <= address && address <= 0x1FFF = writeRAM apple address byte
+cpuReadByte' :: AppleI -> Word16 -> IO Word8
+cpuReadByte' apple address = do
+    byte <- cpuReadByte' apple address
+    printf "CPU read byte %02X <- %04X\n" byte address
+    return byte
+
+
+cpuWriteByte :: AppleI -> Word16 -> Word8 -> IO ()
+cpuWriteByte apple address byte 
+    | 0x0000 <= address && address <= 0x1FFF = writeRAM 0x0000 apple address byte
     | 0xD010 == address = writeKBD apple byte
     | 0xD011 == address = writeKBDCR apple byte
     | 0xD012 == address = writeDSP apple byte
     | 0xD013 == address = writeDSPCR apple byte
-    | otherwise = return ()
+    | 0xE000 <= address && address <= 0xEFFF = writeRAM 0xD000 apple address byte
+    | otherwise = error (printf "Attempted to write byte %02X to unused memory address %04X" byte address)
 
-
-cpuWriteByte :: AppleI -> Word16 -> Word8 -> IO ()
-cpuWriteByte apple address byte = do
+cpuWriteByte' :: AppleI -> Word16 -> Word8 -> IO ()
+cpuWriteByte' apple address byte = do
     cpuWriteByte' apple address byte
+    printf "CPU wrote byte %02X -> %04X\n" byte address
 
-readRAM :: AppleI -> Word16 -> IO Word8
-readRAM apple address = do
-    liftIO $ M.readByte (applRAM apple) address
+readRAM :: Word16 -> AppleI -> Word16 -> IO Word8
+readRAM offset apple address = do
+    liftIO $ M.readByte (applRAM apple) (address - offset)
 
-writeRAM :: AppleI -> Word16 -> Word8 -> IO ()
-writeRAM apple address byte = do
-    liftIO $ M.writeByte (applRAM apple) address byte
+writeRAM :: Word16 -> AppleI -> Word16 -> Word8 -> IO ()
+writeRAM offset apple address byte = do
+    liftIO $ M.writeByte (applRAM apple) (address - offset) byte
 
 readROM :: AppleI -> Word16 -> IO Word8
 readROM apple address = do
-    liftIO $ M.readByte (applROM apple) (address - 0xFF00)
+    liftIO $ M.readByte (applBIOS apple) (address - 0xFF00)
 
 readKBD :: AppleI -> IO Word8
 readKBD apple = do
@@ -137,15 +146,14 @@ reset apple = do
     writeIORef (applTerminal apple) term'
 
 
-new :: [Word8] -> IO AppleI
-new romData = do
+new :: [Word8] -> [Word8] -> IO AppleI
+new bios cassette = do
     cpu <- newIORef K6502.new
     term <- T.new >>= newIORef
     kb <- KB.new >>= newIORef
-    ram <- M.fromList M.ReadAccess (replicate 0x2000 0)
-    rom <- M.fromList M.ReadOnly romData
-    return $ AppleI {applCPU = cpu, applTerminal = term, applKeyboard = kb, applRAM = ram, applROM = rom}
-
+    ram <- M.fromList M.ReadAccess (replicate 0x1000 0 ++ cassette)
+    rom <- M.fromList M.ReadOnly bios
+    return $ AppleI {applCPU = cpu, applTerminal = term, applKeyboard = kb, applRAM = ram, applBIOS = rom}
 
 sendKey :: AppleI -> Word8 -> IO ()
 sendKey apple byte = do

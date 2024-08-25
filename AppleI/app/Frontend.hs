@@ -25,8 +25,8 @@ data Context = Context {
     machine       :: AppleI.AppleI
 }
 
-initialize :: [Word8] -> [Word8] -> [Word8] -> FilePath -> IO Context
-initialize biosData ciData cassetteData fontFP = do
+initialize :: [Word8]  -> [Word8] -> FilePath -> IO Context
+initialize biosData cassetteData fontFP = do
     initializeAll
     let winsize = 2 * V2 (40 * _CHAR_WIDTH) (24 * _CHAR_HEIGHT)
     let texsize = V2 (40 * _CHAR_WIDTH) (24 * _CHAR_HEIGHT)
@@ -35,7 +35,7 @@ initialize biosData ciData cassetteData fontFP = do
     fontSurf <- loadBMP fontFP
     fontText <- createTextureFromSurface renderer fontSurf
     winText <- createTexture renderer RGBA8888 TextureAccessTarget texsize
-    m <- AppleI.new biosData ciData cassetteData
+    m <- AppleI.new biosData cassetteData
     AppleI.reset m
     return Context {  sdlWindow = window
                     , sdlRenderer = renderer
@@ -133,95 +133,99 @@ tick = do
     ctx <- get
     liftIO $ AppleI.tickN 960 (machine ctx)
 
+
+fromChar :: Char -> Word8
+fromChar = fromIntegral . fromEnum 
+
 appleKey :: Text -> Maybe Word8
-appleKey "@"               = Just 0x80
-appleKey "A"               = Just 0xC1
-appleKey "B"               = Just 0xC2
-appleKey "C"               = Just 0xC3
-appleKey "D"               = Just 0xC4
-appleKey "E"               = Just 0xC5
-appleKey "F"               = Just 0xC6
-appleKey "G"               = Just 0xC7
-appleKey "H"               = Just 0xC8
-appleKey "I"               = Just 0xC9
-appleKey "J"               = Just 0xCA
-appleKey "K"               = Just 0xCB
-appleKey "L"               = Just 0xCC
-appleKey "M"               = Just 0xCD
-appleKey "N"               = Just 0xCE
-appleKey "O"               = Just 0xCF
-appleKey "P"               = Just 0xD0
-appleKey "Q"               = Just 0xD1
-appleKey "R"               = Just 0xD2
-appleKey "S"               = Just 0xD3
-appleKey "T"               = Just 0xD4
-appleKey "U"               = Just 0xD5
-appleKey "V"               = Just 0xD6
-appleKey "W"               = Just 0xD7
-appleKey "X"               = Just 0xD8
-appleKey "Y"               = Just 0xD9
-appleKey "Z"               = Just 0xDA
-appleKey "a"               = Just 0xC1
-appleKey "b"               = Just 0xC2
-appleKey "c"               = Just 0xC3
-appleKey "d"               = Just 0xC4
-appleKey "e"               = Just 0xC5
-appleKey "f"               = Just 0xC6
-appleKey "g"               = Just 0xC7
-appleKey "h"               = Just 0xC8
-appleKey "i"               = Just 0xC9
-appleKey "j"               = Just 0xCA
-appleKey "k"               = Just 0xCB
-appleKey "l"               = Just 0xCC
-appleKey "m"               = Just 0xCD
-appleKey "n"               = Just 0xCE
-appleKey "o"               = Just 0xCF
-appleKey "p"               = Just 0xD0
-appleKey "q"               = Just 0xD1
-appleKey "r"               = Just 0xD2
-appleKey "s"               = Just 0xD3
-appleKey "t"               = Just 0xD4
-appleKey "u"               = Just 0xD5
-appleKey "v"               = Just 0xD6
-appleKey "w"               = Just 0xD7
-appleKey "x"               = Just 0xD8
-appleKey "y"               = Just 0xD9
-appleKey "z"               = Just 0xDA
-appleKey "["               = Just 0x9B
-appleKey "\\"              = Just 0xDC
-appleKey "]"               = Just 0xDD
-appleKey "^"               = Just 0xDE
-appleKey "_"               = Just 0xDF
-appleKey " "               = Just 0xA0
-appleKey "!"               = Just 0xA1
-appleKey "\""              = Just 0xA2
-appleKey "#"               = Just 0xA3
-appleKey "$"               = Just 0xA4
-appleKey "%"               = Just 0xA5
-appleKey "&"               = Just 0xA6
-appleKey "'"               = Just 0xA7
-appleKey "("               = Just 0xA8
-appleKey ")"               = Just 0xA9
-appleKey "*"               = Just 0xAA
-appleKey "+"               = Just 0xAB
-appleKey ","               = Just 0xAC
-appleKey "-"               = Just 0xAD
-appleKey "."               = Just 0xAE
-appleKey "/"               = Just 0xAF
-appleKey "0"               = Just 0xB0
-appleKey "1"               = Just 0xB1
-appleKey "2"               = Just 0xB2
-appleKey "3"               = Just 0xB3
-appleKey "4"               = Just 0xB4
-appleKey "5"               = Just 0xB5
-appleKey "6"               = Just 0xB6
-appleKey "7"               = Just 0xB7
-appleKey "8"               = Just 0xB8
-appleKey "9"               = Just 0xB9
-appleKey ":"               = Just 0xBA
-appleKey ";"               = Just 0xBB
-appleKey "<"               = Just 0xBC
-appleKey "="               = Just 0xBD
-appleKey ">"               = Just 0xBE
-appleKey "?"               = Just 0xBF
+appleKey "@"               = Just ( fromChar '@' .|. 0x80 )
+appleKey "A"               = Just ( fromChar 'A' .|. 0x80 )
+appleKey "B"               = Just ( fromChar 'B' .|. 0x80 )
+appleKey "C"               = Just ( fromChar 'C' .|. 0x80 )
+appleKey "D"               = Just ( fromChar 'D' .|. 0x80 )
+appleKey "E"               = Just ( fromChar 'E' .|. 0x80 )
+appleKey "F"               = Just ( fromChar 'F' .|. 0x80 )
+appleKey "G"               = Just ( fromChar 'G' .|. 0x80 )
+appleKey "H"               = Just ( fromChar 'H' .|. 0x80 )
+appleKey "I"               = Just ( fromChar 'I' .|. 0x80 )
+appleKey "J"               = Just ( fromChar 'J' .|. 0x80 )
+appleKey "K"               = Just ( fromChar 'K' .|. 0x80 )
+appleKey "L"               = Just ( fromChar 'L' .|. 0x80 )
+appleKey "M"               = Just ( fromChar 'M' .|. 0x80 )
+appleKey "N"               = Just ( fromChar 'N' .|. 0x80 )
+appleKey "O"               = Just ( fromChar 'O' .|. 0x80 )
+appleKey "P"               = Just ( fromChar 'P' .|. 0x80 )
+appleKey "Q"               = Just ( fromChar 'Q' .|. 0x80 )
+appleKey "R"               = Just ( fromChar 'R' .|. 0x80 )
+appleKey "S"               = Just ( fromChar 'S' .|. 0x80 )
+appleKey "T"               = Just ( fromChar 'T' .|. 0x80 )
+appleKey "U"               = Just ( fromChar 'U' .|. 0x80 )
+appleKey "V"               = Just ( fromChar 'V' .|. 0x80 )
+appleKey "W"               = Just ( fromChar 'W' .|. 0x80 )
+appleKey "X"               = Just ( fromChar 'X' .|. 0x80 )
+appleKey "Y"               = Just ( fromChar 'Y' .|. 0x80 )
+appleKey "Z"               = Just ( fromChar 'Z' .|. 0x80 )
+appleKey "a"               = Just ( fromChar 'A' .|. 0x80 )
+appleKey "b"               = Just ( fromChar 'B' .|. 0x80 )
+appleKey "c"               = Just ( fromChar 'C' .|. 0x80 )
+appleKey "d"               = Just ( fromChar 'D' .|. 0x80 )
+appleKey "e"               = Just ( fromChar 'E' .|. 0x80 )
+appleKey "f"               = Just ( fromChar 'F' .|. 0x80 )
+appleKey "g"               = Just ( fromChar 'G' .|. 0x80 )
+appleKey "h"               = Just ( fromChar 'H' .|. 0x80 )
+appleKey "i"               = Just ( fromChar 'I' .|. 0x80 )
+appleKey "j"               = Just ( fromChar 'J' .|. 0x80 )
+appleKey "k"               = Just ( fromChar 'K' .|. 0x80 )
+appleKey "l"               = Just ( fromChar 'L' .|. 0x80 )
+appleKey "m"               = Just ( fromChar 'M' .|. 0x80 )
+appleKey "n"               = Just ( fromChar 'N' .|. 0x80 )
+appleKey "o"               = Just ( fromChar 'O' .|. 0x80 )
+appleKey "p"               = Just ( fromChar 'P' .|. 0x80 )
+appleKey "q"               = Just ( fromChar 'Q' .|. 0x80 )
+appleKey "r"               = Just ( fromChar 'R' .|. 0x80 )
+appleKey "s"               = Just ( fromChar 'S' .|. 0x80 )
+appleKey "t"               = Just ( fromChar 'T' .|. 0x80 )
+appleKey "u"               = Just ( fromChar 'U' .|. 0x80 )
+appleKey "v"               = Just ( fromChar 'V' .|. 0x80 )
+appleKey "w"               = Just ( fromChar 'W' .|. 0x80 )
+appleKey "x"               = Just ( fromChar 'X' .|. 0x80 )
+appleKey "y"               = Just ( fromChar 'Y' .|. 0x80 )
+appleKey "z"               = Just ( fromChar 'Z' .|. 0x80 )
+appleKey "["               = Just ( fromChar '[' .|. 0x80 )
+appleKey "\\"              = Just ( fromChar '\\' .|. 0x80 )
+appleKey "]"               = Just ( fromChar ']' .|. 0x80 )
+appleKey "^"               = Just ( fromChar '^' .|. 0x80 )
+appleKey "_"               = Just ( fromChar '_' .|. 0x80 )
+appleKey " "               = Just ( fromChar ' ' .|. 0x80 )
+appleKey "!"               = Just ( fromChar '!' .|. 0x80 )
+appleKey "\""              = Just ( fromChar '\"' .|. 0x80 )
+appleKey "#"               = Just ( fromChar '#' .|. 0x80 )
+appleKey "$"               = Just ( fromChar '$' .|. 0x80 )
+appleKey "%"               = Just ( fromChar '%' .|. 0x80 )
+appleKey "&"               = Just ( fromChar '&' .|. 0x80 )
+appleKey "'"               = Just ( fromChar '\'' .|. 0x80 )
+appleKey "("               = Just ( fromChar '(' .|. 0x80 )
+appleKey ")"               = Just ( fromChar ')' .|. 0x80 )
+appleKey "*"               = Just ( fromChar '*' .|. 0x80 )
+appleKey "+"               = Just ( fromChar '+' .|. 0x80 )
+appleKey ","               = Just ( fromChar ',' .|. 0x80 )
+appleKey "-"               = Just ( fromChar '-' .|. 0x80 )
+appleKey "."               = Just ( fromChar '.' .|. 0x80 )
+appleKey "/"               = Just ( fromChar '/' .|. 0x80 )
+appleKey "0"               = Just ( fromChar '0' .|. 0x80 )
+appleKey "1"               = Just ( fromChar '1' .|. 0x80 )
+appleKey "2"               = Just ( fromChar '2' .|. 0x80 )
+appleKey "3"               = Just ( fromChar '3' .|. 0x80 )
+appleKey "4"               = Just ( fromChar '4' .|. 0x80 )
+appleKey "5"               = Just ( fromChar '5' .|. 0x80 )
+appleKey "6"               = Just ( fromChar '6' .|. 0x80 )
+appleKey "7"               = Just ( fromChar '7' .|. 0x80 )
+appleKey "8"               = Just ( fromChar '8' .|. 0x80 )
+appleKey "9"               = Just ( fromChar '9' .|. 0x80 )
+appleKey ":"               = Just ( fromChar ':' .|. 0x80 )
+appleKey ";"               = Just ( fromChar ';' .|. 0x80 )
+appleKey "<"               = Just ( fromChar '<' .|. 0x80 )
+appleKey "="               = Just ( fromChar '=' .|. 0x80 )
+appleKey ">"               = Just ( fromChar '>' .|. 0x80 )
+appleKey "?"               = Just ( fromChar '?' .|. 0x80 )
 appleKey _ = Nothing

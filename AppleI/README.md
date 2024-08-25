@@ -5,7 +5,6 @@ This is a rudimentary Apple I emulator. It runs both wozmon and Basic. Follow in
 
 ### Running
 
-
 ### Resources
 
 The following resources were pretty handy:
