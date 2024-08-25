@@ -3,6 +3,10 @@
 
 This is a rudimentary Apple I emulator. It runs both wozmon and Basic. Follow instructions below to get it running.
 
+![Screenshot from 2024-08-24 22-52-06](https://github.com/user-attachments/assets/0f35888f-390d-44c4-8d6c-82ba3d090e9a)
+
+
+
 ### Running
 
 You need to specify
