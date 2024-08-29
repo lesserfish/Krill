@@ -28,7 +28,7 @@ cpuReadByte apple address
     | 0xD013 == address = readDSPCR apple
     | 0xE000 <= address && address <= 0xEFFF = readRAM 0xD000 apple address  -- RAM mapped in 0xE000 : 0xEFFF
     | 0xFF00 <= address && address <= 0xFFFF = readROM apple address
-    | otherwise = error (printf "Attempted to read unused memory address %04X" address)
+    | otherwise = return 0
 
 cpuReadByte' :: AppleI -> Word16 -> IO Word8
 cpuReadByte' apple address = do
@@ -45,7 +45,7 @@ cpuWriteByte apple address byte
     | 0xD012 == address = writeDSP apple byte
     | 0xD013 == address = writeDSPCR apple byte
     | 0xE000 <= address && address <= 0xEFFF = writeRAM 0xD000 apple address byte
-    | otherwise = error (printf "Attempted to write byte %02X to unused memory address %04X" byte address)
+    | otherwise = return ()
 
 cpuWriteByte' :: AppleI -> Word16 -> Word8 -> IO ()
 cpuWriteByte' apple address byte = do

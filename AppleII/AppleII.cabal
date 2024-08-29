@@ -1,5 +1,5 @@
 cabal-version:          3.0
-name:                   AppleI
+name:                   appleI
 version:                0.1.0.0
 -- synopsis:
 -- description:
@@ -16,15 +16,13 @@ extra-doc-files:        CHANGELOG.md
 common warnings
     ghc-options:        -Wall
 
-executable appleI
+executable AppleI
     import:             warnings
     main-is:            Main.hs
 
-    other-modules:      AppleI.Bus
-                    ,   AppleI.Keyboard
-                    ,   AppleI.Terminal
-                    ,   AppleI.Terminal.Carousel
-                    ,   AppleI.Memory
+    other-modules:      AppleII.Bus
+                    ,   AppleII.Keyboard
+                    ,   AppleII.Memory
                     ,   Frontend
     -- other-extensions:
     build-depends:      base ^>=4.17.2.1
