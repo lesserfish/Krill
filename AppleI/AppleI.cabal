@@ -13,6 +13,11 @@ build-type:             Simple
 extra-doc-files:        CHANGELOG.md
 -- extra-source-files:
 
+data-files:         Assets/font.bmp
+                ,   Assets/wozmon.bin
+                ,   Assets/basic.bin
+
+
 common warnings
     ghc-options:        -Wall
 
@@ -36,9 +41,6 @@ executable appleI
                     ,   bytestring >= 0.11.5.3
                     ,   optparse-applicative >= 0.18.0.0
                     ,   directory >= 1.3.7.1
-
-    data-files:         Assets/font.bmp
-                    ,   Assets/wozmon.bin
 
     hs-source-dirs:     app
 

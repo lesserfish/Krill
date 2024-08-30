@@ -1,5 +1,6 @@
 module Main where
 import Frontend
+import Paths_AppleI (getDataFileName)
 
 import qualified Data.ByteString as B
 import Data.Word
@@ -42,28 +43,27 @@ data Args = Args
   , fontPath       :: FilePath
   }
 
-argsParser :: Parser Args
-argsParser = Args
+argsParser :: (String, String, String) -> Parser Args
+argsParser (wozmonFP, basicFP, fontFP) = Args
   <$> strOption
         ( long "bios"
        <> short 'b'
        <> metavar "BIOS"
-       <> help "Path to the BIOS data"
-       <> value "Assets/wozmon.bin"
+       <> help "Path to the BIOS rom"
+       <> value wozmonFP
        <> showDefault )
   <*> strOption
-        ( long "cassette"
-       <> short 'c'
-       <> metavar "CASSETTE"
-       <> help "Path to the cassette data"
-       <> value "Assets/basic.bin"
+        ( long "basic"
+       <> metavar "BASIC"
+       <> help "Path to the Basic rom"
+       <> value basicFP
        <> showDefault )
   <*> strOption
         ( long "font"
        <> short 'f'
        <> metavar "FONT"
        <> help "Path to the font file"
-       <> value "Assets/font.bmp" 
+       <> value fontFP
        <> showDefault )
 
 start :: Args -> IO()
@@ -77,9 +77,13 @@ start args = do
 
 main :: IO ()
 main = do
-    execParser opts >>= start
+    wozmonFP <- getDataFileName "Assets/wozmon.bin"
+    basicFP <- getDataFileName "Assets/basic.bin"
+    fontFP <- getDataFileName "Assets/font.bmp"
+    let paths = (wozmonFP, basicFP, fontFP)
+    execParser (opts paths) >>= start
   where
-    opts = info (argsParser <**> helper)
+    opts paths = info (argsParser paths <**> helper)
       ( fullDesc
      <> progDesc "Run the Apple I emulator"
      <> header "Apple I Emulator - a simple Haskell program" )
