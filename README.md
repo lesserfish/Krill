@@ -16,3 +16,14 @@ Here is a screenshot of the Apple I. Go check it out [here](https://github.com/l
 ## Apple II
 
 Currently in progress.
+
+
+## Building
+
+There is a flake.nix with all of the dependencies (for my homies in the Nix community). Simply run
+
+
+    nix develop
+    cabal update
+
+And then just build whatever project you are interested in
