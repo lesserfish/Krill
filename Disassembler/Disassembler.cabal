@@ -21,7 +21,7 @@ executable Disassembler
     main-is:            Main.hs
 
     -- other-extensions:
-    build-depends:      base ^>=4.17.2.1
+    build-depends:      base >=4.17.2.1
                     ,   K6502
                     ,   optparse-applicative >= 0.18.0.0
                     ,   bytestring >= 0.11.5.3

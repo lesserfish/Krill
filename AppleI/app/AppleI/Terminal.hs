@@ -12,6 +12,7 @@ module AppleI.Terminal (
 import Data.Bits (xor)
 import Data.Word
 import Control.Monad.State
+import Control.Monad
 import qualified AppleI.Terminal.Carousel as C
 import qualified AppleI.Memory as M
 

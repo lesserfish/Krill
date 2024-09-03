@@ -1,5 +1,5 @@
 {
-  description = "haskell configuration.";
+  description = "Development Environment for Krill";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
@@ -19,8 +19,11 @@
         ghc
         cabal-install
         haskell-language-server
-        haskellPackages.hlint
+        SDL2
       ];
-    };
+      nativeBuildInputs = with pkgs; [
+          pkg-config
+      ];
+     };
   };
 }

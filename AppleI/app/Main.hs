@@ -5,6 +5,7 @@ import Paths_AppleI (getDataFileName)
 import qualified Data.ByteString as B
 import Data.Word
 import Control.Monad.State
+import Control.Monad
 import Options.Applicative
 
 fill :: Int -> [Word8] -> [Word8]

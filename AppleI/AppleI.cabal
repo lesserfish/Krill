@@ -32,7 +32,7 @@ executable appleI
                     ,   AppleI.Memory
                     ,   Frontend
     -- other-extensions:
-    build-depends:      base ^>=4.17.2.1
+    build-depends:      base >=4.17.2.1
                     ,   K6502
                     ,   vector >= 0.13.1.0
                     ,   mtl >= 2.2.2

@@ -7,6 +7,7 @@ import Data.Text (Text)
 import SDL hiding (get)
 import Foreign.C.Types (CInt)
 import Control.Monad.State
+import Control.Monad
 import Data.Word
 import Data.Bits
 

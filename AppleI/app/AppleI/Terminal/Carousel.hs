@@ -5,6 +5,7 @@ import qualified Data.Vector.Unboxed.Mutable as UMV
 import Data.Word
 import Data.Bits ((.&.), (.>>.), (.<<.))
 import Control.Monad.State
+import Control.Monad
 
 data Carousel = Carousel {
     cS1 :: UMV.IOVector Word8,

@@ -4,6 +4,7 @@ import K6502.Types
 import K6502.Internal
 import Utils
 
+import Control.Monad
 import Control.Monad.State
 import Data.Word
 import Data.Bits

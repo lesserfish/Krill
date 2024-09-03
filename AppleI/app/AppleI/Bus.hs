@@ -9,6 +9,7 @@ import Text.Printf
 import Data.IORef
 import Data.Word
 import Control.Monad.State 
+import Control.Monad
 
 data AppleI = AppleI {
         applCPU       :: IORef K6502.K6502
