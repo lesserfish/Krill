@@ -2,12 +2,11 @@
 
 module Frontend where
 
-import Data.Text (Text)
 import SDL hiding (get)
 import Foreign.C.Types (CInt)
 import Control.Monad.State
+import Control.Monad
 import Data.Word
-import Data.Bits
 
 _CHAR_WIDTH :: CInt 
 _CHAR_WIDTH = 16
@@ -45,7 +44,7 @@ getVBuffer = do
     return []
 
 renderVBuffer :: [Word8] -> StateT Context IO ()
-renderVBuffer buffer = do
+renderVBuffer _ = do
     renderer <- gets sdlRenderer
     winText <- gets windowTexture
     rendererRenderTarget renderer $= Nothing
@@ -84,6 +83,6 @@ control = do
 
 tick :: StateT Context IO ()
 tick = do
-    ctx <- get
+    _ <- get
     return ()
 

@@ -1,8 +1,7 @@
 module Main where
 import Frontend
 
-import qualified Data.ByteString as B
-import Data.Word
+import Control.Monad
 import Control.Monad.State
 import Options.Applicative
 
@@ -10,9 +9,9 @@ loop :: StateT Context IO ()
 loop = do
     tick
     control
-    exit <- gets exitRequest
     buffer <- getVBuffer
     renderVBuffer buffer
+    exit <- gets exitRequest
     unless exit loop
 
 data Args = Args
@@ -46,7 +45,7 @@ argsParser = Args
        <> showDefault )
 
 start :: Args -> IO()
-start args = do
+start _ = do
     ctx <- initialize
     _ <- execStateT loop ctx
     return ()
@@ -57,6 +56,6 @@ main = do
   where
     opts = info (argsParser <**> helper)
       ( fullDesc
-     <> progDesc "Run the Apple I emulator"
-     <> header "Apple I Emulator - a simple Haskell program" )
+     <> progDesc "Run the Apple II emulator"
+     <> header "Apple II Emulator" )
 

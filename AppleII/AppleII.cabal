@@ -23,6 +23,8 @@ executable AppleI
     other-modules:      AppleII.Bus
                     ,   AppleII.Keyboard
                     ,   AppleII.Memory
+                    ,   AppleII.Display
+                    ,   AppleII.Cassette
                     ,   Frontend
     -- other-extensions:
     build-depends:      base >=4.17.2.1

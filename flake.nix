@@ -23,6 +23,10 @@
         nativeBuildInputs = with pkgs; [
           pkg-config
         ];
+        shellHook = ''
+          export EDITOR=nvim
+          fish
+        '';
       };
 
       aarch64-darwin.default = let
@@ -41,6 +45,10 @@
         nativeBuildInputs = with pkgs; [
           pkg-config
         ];
+        shellHook = ''
+          export EDITOR=nvim
+          fish
+        '';
       };
     };
   };

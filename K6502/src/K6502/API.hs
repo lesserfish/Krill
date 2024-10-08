@@ -1,6 +1,7 @@
 module K6502.API ( 
     new,
     tick,
+    tick',
     reset,
     nmi,
     irq
