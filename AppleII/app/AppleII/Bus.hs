@@ -2,31 +2,46 @@ module AppleII.Bus where
 
 import qualified AppleII.Memory as M
 import qualified AppleII.Keyboard as KB
+import qualified AppleII.Display as D
+import qualified AppleII.Cassette as CA
 import qualified K6502
 
-import Text.Printf
 import Data.IORef
 import Data.Word
 import Control.Monad.State 
+import Control.Monad
 
 data AppleI = AppleI {
         applCPU       :: IORef K6502.K6502
     ,   applKeyboard  :: IORef KB.Keyboard
     ,   applRAM       :: M.Memory
     ,   applBIOS      :: M.Memory
+    ,   applDisplay   :: D.Display
+    ,   applCassette  :: CA.Cassette
 }
 
 
 cpuReadByte :: AppleI -> Word16 -> IO Word8
-cpuReadByte apple address = undefined
+cpuReadByte _ address 
+    | address <= 0xBFFF = return 0 -- RAM
+    | address == 0xC000 = return 0 -- Keyboard Data
+    | address == 0xC010 = return 0 -- Keyboard Strobe
+    | address == 0xC020 = return 0 -- Cassette output plug
+    | address == 0xC030 = return 0 -- Speaker
+    | 0xC050 <= address && address <=  0xC057 = return 0 -- Display Switches
+    | address == 0xC060 = return 0 -- Cassette input plug
+    | otherwise = return 0
 
 cpuWriteByte :: AppleI -> Word16 -> Word8 -> IO ()
-cpuWriteByte apple address byte = undefined
-
-cpuWriteByte' :: AppleI -> Word16 -> Word8 -> IO ()
-cpuWriteByte' apple address byte = do
-    cpuWriteByte' apple address byte
-    printf "CPU wrote byte %02X -> %04X\n" byte address
+cpuWriteByte _ address _
+    | address <= 0xBFFF = return () -- RAM
+    | address == 0xC000 = return () -- Keyboard Data
+    | address == 0xC010 = return () -- Keyboard Strobe
+    | address == 0xC020 = return () -- Cassette output plug
+    | address == 0xC030 = return () -- Speaker
+    | 0xC050 <= address && address <=  0xC057 = return () -- Display Switches
+    | address == 0xC060 = return () -- Cassette input plug
+    | otherwise = return ()
 
 appleInterface :: AppleI -> K6502.Interface
 appleInterface apple = K6502.Interface r w p where
@@ -36,19 +51,18 @@ appleInterface apple = K6502.Interface r w p where
 
 tick :: AppleI -> IO()
 tick apple = do
-    -- Tick the CPU
+    -- Tick CPU
     cpu <- liftIO . readIORef . applCPU $ apple
     cpu' <- K6502.tick (appleInterface apple) cpu
     writeIORef (applCPU apple) cpu'
+    -- Tick Cassette
 
 tickN :: Int -> AppleI -> IO ()
 tickN n apple = do
-    let action = replicateM_ n (tick apple)
-    action
+    replicateM_ n  (tick apple)
 
 reset :: AppleI -> IO()
 reset apple = do
-    -- Tick the CPU
     cpu <- liftIO . readIORef . applCPU $ apple
     cpu' <- K6502.reset (appleInterface apple) cpu
     writeIORef (applCPU apple) cpu'
