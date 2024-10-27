@@ -4,9 +4,12 @@ module Frontend where
 
 import SDL hiding (get)
 import Foreign.C.Types (CInt)
+import Foreign.Storable
+import Foreign.Ptr
 import Control.Monad.State
 import Control.Monad
 import Data.Word
+import qualified AppleII.Bus as Apple
 
 _CHAR_WIDTH :: CInt 
 _CHAR_WIDTH = 16
@@ -15,23 +18,26 @@ _CHAR_HEIGHT :: CInt
 _CHAR_HEIGHT = 16
 
 data Context = Context {
+    apple         :: Apple.AppleII,
     sdlWindow     :: Window,
     sdlRenderer   :: Renderer,
-    windowTexture :: Texture,
+    videoTexture   :: Texture,
     exitRequest   :: Bool}
 
 initialize :: IO Context
 initialize = do
     initializeAll
-    let winsize = 2 * V2 (40 * _CHAR_WIDTH) (24 * _CHAR_HEIGHT)
-    let texsize = V2 (40 * _CHAR_WIDTH) (24 * _CHAR_HEIGHT)
+    let winsize = 4 * V2 280 192
+    let buffsize = V2 280 192
     window <- createWindow "Apple II" defaultWindow{windowInitialSize =  winsize}
     renderer <- createRenderer window (-1) defaultRenderer{ rendererTargetTexture = True }
-    winText <- createTexture renderer RGBA8888 TextureAccessTarget texsize
+    vTexture <- createTexture renderer RGB24 TextureAccessStreaming buffsize
+    appl <- Apple.new [] []
     return Context {  sdlWindow = window
                     , sdlRenderer = renderer
-                    , windowTexture = winText
+                    , videoTexture = vTexture
                     , exitRequest = False
+                    , apple = appl
                    }
 
 screenRect :: (Int, Int) -> Rectangle CInt
@@ -39,16 +45,30 @@ screenRect (a, b) = Rectangle (P $ V2 x y) (V2 _CHAR_WIDTH _CHAR_HEIGHT) where
     x = fromIntegral a * _CHAR_WIDTH
     y = fromIntegral b * _CHAR_HEIGHT
 
-getVBuffer :: StateT Context IO [Word8]
-getVBuffer = do
-    return []
+updateVBuffer :: StateT Context IO ()
+updateVBuffer = do
+    appl <- gets apple
+    vTexture <- gets videoTexture
+    (rawBuffer, _) <- lockTexture vTexture Nothing
+    liftIO $ Apple.updateVBuffer appl rawBuffer
+    unlockTexture vTexture
 
-renderVBuffer :: [Word8] -> StateT Context IO ()
-renderVBuffer _ = do
+debugVBuffer :: StateT Context IO()
+debugVBuffer = do
+    vTexture <- gets videoTexture
+    (rawBuffer, _) <- lockTexture vTexture Nothing
+    let vBuffer = castPtr rawBuffer :: Ptr Word8
+    liftIO $ mapM_ (\idx -> do
+        pix <- peek (plusPtr vBuffer idx) :: IO Word8
+        putStr $ show pix) [0..20]
+    liftIO $ putStrLn ""
+
+renderVBuffer :: StateT Context IO ()
+renderVBuffer = do
     renderer <- gets sdlRenderer
-    winText <- gets windowTexture
+    vTexture <- gets videoTexture
     rendererRenderTarget renderer $= Nothing
-    copy renderer winText Nothing Nothing
+    copy renderer vTexture Nothing Nothing
     present renderer
 
 sendKey :: Word8 -> StateT Context IO ()
@@ -81,8 +101,14 @@ control = do
     events <- pollEvents
     mapM_ handleEvents events
 
+tickApple :: StateT Context IO ()
+tickApple = do
+    appl <- gets apple
+    liftIO $ Apple.tickN 200 appl
+
 tick :: StateT Context IO ()
 tick = do
-    _ <- get
+    tickApple
+    updateVBuffer
     return ()
 

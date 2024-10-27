@@ -1,4 +1,4 @@
-# Revision history for KBasic
+# Revision history for AppleII
 
 ## 0.1.0.0 -- YYYY-mm-dd
 

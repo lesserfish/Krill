@@ -9,15 +9,13 @@ loop :: StateT Context IO ()
 loop = do
     tick
     control
-    buffer <- getVBuffer
-    renderVBuffer buffer
+    renderVBuffer
     exit <- gets exitRequest
     unless exit loop
 
 data Args = Args
   { biosPath       :: FilePath
   , cassettePath   :: FilePath
-  , fontPath       :: FilePath
   }
 
 argsParser :: Parser Args
@@ -35,13 +33,6 @@ argsParser = Args
        <> metavar "CASSETTE"
        <> help "Path to the cassette data"
        <> value "Assets/basic.bin"
-       <> showDefault )
-  <*> strOption
-        ( long "font"
-       <> short 'f'
-       <> metavar "FONT"
-       <> help "Path to the font file"
-       <> value "Assets/font.bmp" 
        <> showDefault )
 
 start :: Args -> IO()

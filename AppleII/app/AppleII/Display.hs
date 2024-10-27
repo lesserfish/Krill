@@ -1,14 +1,19 @@
 module AppleII.Display (
     Display(..)
+,   initialize
 ,   cpuRead
 ,   cpuWrite
-,   renderBuffer
+,   updateVBuffer
+,   tick
 ) where
 
+import qualified AppleII.Display.Char as CB
 import AppleII.Memory
 import Control.Monad.State
 import Foreign.Ptr
+import Foreign.Storable
 import Data.Word
+import System.Random (randomIO)
 
 data GraphicsMode = GRAPHICS_LORES
                   | GRAPHICS_HIRES
@@ -29,7 +34,23 @@ data Display = Display
     ,   dPage :: Page
     ,   dGraphicsMode :: GraphicsMode
     ,   dLayout :: Layout
+    ,   dCBank :: CB.CharacterBank
     }
+
+initialize :: Memory -> IO Display
+initialize ram = do
+    let displayMode = MODE_TEXT
+    let page = PAGE_PRIMARY
+    let graphicsMode = GRAPHICS_LORES
+    let layout = LAYOUT_PURE
+    cBank <- CB.characterBank
+    return $ Display { dRAM = ram
+                     , dDisplayMode = displayMode
+                     , dPage = page
+                     , dGraphicsMode = graphicsMode
+                     , dLayout = layout
+                     , dCBank = cBank }
+
 
 cpuRef :: Word16 -> StateT Display IO ()
 cpuRef addr 
@@ -58,13 +79,27 @@ cpuRead addr = runStateT (cpuRef addr >> return 0)
 cpuWrite :: Word16 -> Word8 -> Display -> IO Display
 cpuWrite addr _ = execStateT (cpuRef addr )
 
--- In Text-Mode the display can render 40x24 text characters, each 7x8 pixels, for a total resolution of 280x192 pixels.
--- In Lores-Mode the display can render 40x48 color blocks, each 7x4 pixels, for a total resolution of 280x192 pixels.
--- In Hires-Mode the display can render 280x192 pixels.
-renderBuffer' :: Ptr () -> StateT Display IO ()
-renderBuffer' rawBuffer = do
-    let byteBuffer = castPtr rawBuffer :: Ptr Word8
-    return ()
+updateCBank :: StateT Display IO ()
+updateCBank = do
+    display <- get
+    put display { dCBank = CB.tick ( dCBank display )}
 
-renderBuffer :: Display -> Ptr () -> IO Display
-renderBuffer display rawBuffer = execStateT (renderBuffer' rawBuffer) display
+
+tick' :: StateT Display IO ()
+tick' = do
+    updateCBank
+
+tick :: Display -> IO Display
+tick = execStateT tick' 
+
+-- Rendering methods
+
+-- Ptr should be a ptr holding 280 x 192 x 3 bytes of data, representing (R, G, B) values of a display of 280 x 192 pixels.
+updateVBuffer :: Display -> Ptr () -> IO ()
+updateVBuffer display rawBuffer = do
+    let vBuffer = castPtr rawBuffer :: Ptr Word8
+    mapM_ (\idx -> do
+        byte <- randomIO :: IO Word8
+        poke (plusPtr vBuffer idx) byte
+        ) [0..(280 * 192 * 3)]
+

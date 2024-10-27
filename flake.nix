@@ -25,29 +25,6 @@
         ];
         shellHook = ''
           export EDITOR=nvim
-          fish
-        '';
-      };
-
-      aarch64-darwin.default = let
-        pkgs = import nixpkgs {
-          system = "aarch64-darwin";
-          config.allowUnfree = true;
-        };
-      in pkgs.mkShell {
-        packages = with pkgs; [
-          bashInteractive
-          ghc
-          cabal-install
-          haskell-language-server
-          SDL2
-        ];
-        nativeBuildInputs = with pkgs; [
-          pkg-config
-        ];
-        shellHook = ''
-          export EDITOR=nvim
-          fish
         '';
       };
     };
