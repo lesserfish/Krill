@@ -98,8 +98,8 @@ tick :: CharacterBank -> CharacterBank
 tick cb = cb
 
 getChar :: CharacterBank -> Word8 -> IO [[Word8]]
-getChar bank charByte = getChar2 bank char mod where
-    (char, mod) = parseByte charByte
+getChar bank charByte = getChar2 bank char cmod where
+    (char, cmod) = parseByte charByte
 
 getChar2 :: CharacterBank -> Character -> CharMod -> IO [[Word8]]
 getChar2 bank char CHAR_MOD_NORMAL = getChar' bank char

@@ -16,7 +16,8 @@ def get_pattern(char):
     
     # Extract the pixel data as a 7x8 grid
     pixel_grid = [[image.getpixel((x, y)) for x in range(7)] for y in range(8)]
-    pixel_grid = [pixel_grid[y] for y in [7, 0, 1, 2, 3, 4, 5, 6]]
+    if char != '_':
+        pixel_grid = [pixel_grid[y] for y in [7, 0, 1, 2, 3, 4, 5, 6]]
     
     return pixel_grid
 
