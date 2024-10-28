@@ -4,7 +4,7 @@ import AppleII.Memory
 import Paths_AppleII (getDataFileName)
 import Data.Word
 import qualified Data.ByteString as B
-import Control.Exception (assert)
+import Control.Monad (when)
 
 data CharacterBank = CharacterBank 
     {   bankRom :: Memory
@@ -86,7 +86,8 @@ loadFont = do
     let expectedRomSize = 64 * 7 * 8
     filepath <- getDataFileName "Assets/font.bin"
     romData <- B.unpack <$> B.readFile filepath :: IO [Word8]
-    assert  (length romData == expectedRomSize) (fromList ReadOnly romData)
+    when (expectedRomSize /= length romData) $ error "Font ROM has incorrect size"
+    fromList ReadOnly romData
 
 characterBank :: IO CharacterBank
 characterBank = do
@@ -369,3 +370,71 @@ parseByte 0xFC = (CHAR_LT            , CHAR_MOD_NORMAL)
 parseByte 0xFD = (CHAR_EQ            , CHAR_MOD_NORMAL)
 parseByte 0xFE = (CHAR_GT            , CHAR_MOD_NORMAL)
 parseByte 0xFF = (CHAR_QUESTION      , CHAR_MOD_NORMAL)
+
+
+-- Position of char in ROM
+charAddress :: Character -> Int
+charAddress CHR_AT            = 0x00 * 7 * 8
+charAddress CHR_A             = 0x01 * 7 * 8
+charAddress CHR_B             = 0x02 * 7 * 8
+charAddress CHR_C             = 0x03 * 7 * 8
+charAddress CHR_D             = 0x04 * 7 * 8
+charAddress CHR_E             = 0x05 * 7 * 8
+charAddress CHR_F             = 0x06 * 7 * 8
+charAddress CHR_G             = 0x07 * 7 * 8
+charAddress CHR_H             = 0x08 * 7 * 8
+charAddress CHR_I             = 0x09 * 7 * 8
+charAddress CHR_J             = 0x0A * 7 * 8
+charAddress CHR_K             = 0x0B * 7 * 8
+charAddress CHR_L             = 0x0C * 7 * 8
+charAddress CHR_M             = 0x0D * 7 * 8
+charAddress CHR_N             = 0x0E * 7 * 8
+charAddress CHR_O             = 0x0F * 7 * 8
+charAddress CHR_P             = 0x10 * 7 * 8
+charAddress CHR_Q             = 0x11 * 7 * 8
+charAddress CHR_R             = 0x12 * 7 * 8
+charAddress CHR_S             = 0x13 * 7 * 8
+charAddress CHR_T             = 0x14 * 7 * 8
+charAddress CHR_U             = 0x15 * 7 * 8
+charAddress CHR_V             = 0x16 * 7 * 8
+charAddress CHR_W             = 0x17 * 7 * 8
+charAddress CHR_X             = 0x18 * 7 * 8
+charAddress CHR_Y             = 0x19 * 7 * 8
+charAddress CHR_Z             = 0x1A * 7 * 8
+charAddress CHAR_LBRACK       = 0x1B * 7 * 8
+charAddress CHAR_ISLASH       = 0x1C * 7 * 8
+charAddress CHAR_RBRACK       = 0x1D * 7 * 8
+charAddress CHAR_CARET        = 0x1E * 7 * 8
+charAddress CHAR_UNDERSCORE   = 0x1F * 7 * 8
+charAddress CHAR_SPACE        = 0x20 * 7 * 8
+charAddress CHAR_EXCLAM       = 0x21 * 7 * 8
+charAddress CHAR_QUOTE        = 0x22 * 7 * 8
+charAddress CHAR_HASH         = 0x23 * 7 * 8
+charAddress CHAR_DOLLAR       = 0x24 * 7 * 8
+charAddress CHAR_PERCENT      = 0x25 * 7 * 8
+charAddress CHAR_AMP          = 0x26 * 7 * 8
+charAddress CHAR_APOS         = 0x27 * 7 * 8
+charAddress CHAR_LPAREN       = 0x28 * 7 * 8
+charAddress CHAR_RPAREN       = 0x29 * 7 * 8
+charAddress CHAR_STAR         = 0x2A * 7 * 8
+charAddress CHAR_PLUS         = 0x2B * 7 * 8
+charAddress CHAR_COMMA        = 0x2C * 7 * 8
+charAddress CHAR_MINUS        = 0x2D * 7 * 8
+charAddress CHAR_PERIOD       = 0x2E * 7 * 8
+charAddress CHAR_SLASH        = 0x2F * 7 * 8
+charAddress CHAR_0            = 0x30 * 7 * 8
+charAddress CHAR_1            = 0x31 * 7 * 8
+charAddress CHAR_2            = 0x32 * 7 * 8
+charAddress CHAR_3            = 0x33 * 7 * 8
+charAddress CHAR_4            = 0x34 * 7 * 8
+charAddress CHAR_5            = 0x35 * 7 * 8
+charAddress CHAR_6            = 0x36 * 7 * 8
+charAddress CHAR_7            = 0x37 * 7 * 8
+charAddress CHAR_8            = 0x38 * 7 * 8
+charAddress CHAR_9            = 0x39 * 7 * 8
+charAddress CHAR_COLON        = 0x3A * 7 * 8
+charAddress CHAR_SEMI         = 0x3B * 7 * 8
+charAddress CHAR_LT           = 0x3C * 7 * 8
+charAddress CHAR_EQ           = 0x3D * 7 * 8
+charAddress CHAR_GT           = 0x3E * 7 * 8
+charAddress CHAR_QUESTION     = 0x3F * 7 * 8

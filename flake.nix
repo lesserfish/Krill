@@ -19,6 +19,9 @@
           cabal-install
           haskell-language-server
           SDL2
+          python312
+          python312Packages.pillow
+          python312Packages.pygame
         ];
         nativeBuildInputs = with pkgs; [
           pkg-config
