@@ -123,7 +123,7 @@ drawChar :: Display -> (Int, Int) -> Word8 -> Ptr () -> IO ()
 drawChar display (x, y) char rawBuffer = do
     let vBuffer = castPtr rawBuffer :: Ptr Word8
     let start = 3 * (y * 280 * 8  + x * 7)
-    bytes <- CB.getChar (dCBank display) char
+    bytes <- CB.getGlyph (dCBank display) char
     mapM_ (\h -> do
         mapM_ (\w -> do
             let offset = 3 * (280 * h + w)

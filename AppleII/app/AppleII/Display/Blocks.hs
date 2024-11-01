@@ -1,4 +1,7 @@
-module AppleII.Display.Blocks where
+module AppleII.Display.Blocks ( 
+  RGB
+, getBlock
+)where
 
 import Data.Word
 import Data.Bits

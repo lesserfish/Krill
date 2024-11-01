@@ -1,4 +1,9 @@
-module AppleII.Display.Char where
+module AppleII.Display.Char (
+  CharacterBank(..)
+, characterBank
+, tick
+, getGlyph
+) where
 
 import AppleII.Memory
 import Paths_AppleII (getDataFileName)
@@ -102,17 +107,17 @@ tick cb = do
     let cb' = if counter > 80000 then cb {bankCounter = 0, bankBlink = not (bankBlink cb)} else cb {bankCounter = bankCounter cb + 1 }
     return cb'
 
-getChar :: CharacterBank -> Word8 -> IO [[Word8]]
-getChar bank charByte = getChar2 bank char cmod where
+getGlyph :: CharacterBank -> Word8 -> IO [[Word8]]
+getGlyph bank charByte = getGlyph2 bank char cmod where
     (char, cmod) = parseByte charByte
 
-getChar2 :: CharacterBank -> Character -> CharMod -> IO [[Word8]]
-getChar2 bank char CHAR_MOD_NORMAL = getChar' bank char
-getChar2 bank char CHAR_MOD_INVERTED = map (map (0xFF - )) <$> getChar' bank char
-getChar2 bank char CHAR_MOD_FLASHING = if bankBlink bank then map (map (0xFF - ) ) <$> getChar' bank char else getChar' bank char
+getGlyph2 :: CharacterBank -> Character -> CharMod -> IO [[Word8]]
+getGlyph2 bank char CHAR_MOD_NORMAL = getGlyph' bank char
+getGlyph2 bank char CHAR_MOD_INVERTED = map (map (0xFF - )) <$> getGlyph' bank char
+getGlyph2 bank char CHAR_MOD_FLASHING = if bankBlink bank then map (map (0xFF - ) ) <$> getGlyph' bank char else getGlyph' bank char
 
-getChar' :: CharacterBank -> Character -> IO [[Word8]]
-getChar' bank char = do
+getGlyph' :: CharacterBank -> Character -> IO [[Word8]]
+getGlyph' bank char = do
     let rom = bankRom bank
     let baseAddress = charAddress char
     mapM (\y -> do
