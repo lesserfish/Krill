@@ -24,6 +24,7 @@ executable AppleII
     other-modules:    AppleII.Bus
                   ,   AppleII.Display
                   ,   AppleII.Display.Char
+                  ,   AppleII.Display.Blocks
                   ,   AppleII.Keyboard
                   ,   AppleII.Memory
                   ,   Frontend

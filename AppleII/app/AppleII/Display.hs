@@ -8,6 +8,7 @@ module AppleII.Display (
 ) where
 
 import qualified AppleII.Display.Char as CB
+import qualified AppleII.Display.Blocks as Blocks
 import AppleII.Memory
 import Control.Monad.State
 import Foreign.Ptr
@@ -96,14 +97,27 @@ tick = execStateT tick'
 -- Rendering methods
 
 -- Ptr should be a ptr holding 280 x 192 x 3 bytes of data, representing (R, G, B) values of a display of 280 x 192 pixels.
-updateVBuffer :: Display -> Ptr () -> IO ()
-updateVBuffer display rawBuffer = do
+updateVBuffer1 :: Display -> Ptr () -> IO ()
+updateVBuffer1 display rawBuffer = do
     mapM_ (\y -> do
         mapM_ (\x -> do
             let char = fromIntegral $ mod (x + y * 40) 0xFF
             drawChar display (x, y) char rawBuffer
             ) [0..39]
         ) [0..23]
+
+updateVBuffer2 :: Display -> Ptr () -> IO ()
+updateVBuffer2 display rawBuffer = do
+    mapM_ (\y -> do
+        mapM_ (\x -> do
+            let col = fromIntegral $ mod (x + y * 40) 0xFF
+            drawBlock display (x, y) col rawBuffer
+            ) [0..39]
+        ) [0..23]
+
+
+updateVBuffer :: Display -> Ptr () -> IO ()
+updateVBuffer = updateVBuffer2
 
 drawChar :: Display -> (Int, Int) -> Word8 -> Ptr () -> IO ()
 drawChar display (x, y) char rawBuffer = do
@@ -113,10 +127,24 @@ drawChar display (x, y) char rawBuffer = do
     mapM_ (\h -> do
         mapM_ (\w -> do
             let offset = 3 * (280 * h + w)
-            let byte = (bytes !! w) !! h :: Word8
+            let byte = (bytes !! h) !! w :: Word8
             poke (plusPtr vBuffer (start + offset + 0)) byte
             poke (plusPtr vBuffer (start + offset + 1)) byte
             poke (plusPtr vBuffer (start + offset + 2)) byte
             ) [0..6]
         ) [0..7]
 
+drawBlock :: Display -> (Int, Int) -> Word8 -> Ptr () -> IO ()
+drawBlock display (x, y) colByte rawBuffer = do
+    let vBuffer = castPtr rawBuffer :: Ptr Word8
+    let start = 3 * (y * 280 * 8  + x * 7)
+    let bytes = Blocks.getBlock colByte
+    mapM_ (\h -> do
+        mapM_ (\w -> do
+            let offset = 3 * (280 * h + w)
+            let (r, g, b) = (bytes !! h) !! w :: Blocks.RGB
+            poke (plusPtr vBuffer (start + offset + 0)) r
+            poke (plusPtr vBuffer (start + offset + 1)) g
+            poke (plusPtr vBuffer (start + offset + 2)) b
+            ) [0..6]
+        ) [0..7]

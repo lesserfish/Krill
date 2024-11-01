@@ -115,12 +115,12 @@ getChar' :: CharacterBank -> Character -> IO [[Word8]]
 getChar' bank char = do
     let rom = bankRom bank
     let baseAddress = charAddress char
-    mapM (\x -> do
-        mapM (\y -> do
+    mapM (\y -> do
+        mapM (\x -> do
             let address = fromIntegral (baseAddress + 8*x + y)
-            (\x -> 0xFF - x * 0xFF) <$> readByte rom address 
-            ) [0..7]
-        ) [0..6]
+            (\z -> 0xFF - z * 0xFF) <$> readByte rom address 
+            ) [0..6]
+        ) [0..7]
 
 
 parseByte :: Word8 -> (Character, CharMod)
