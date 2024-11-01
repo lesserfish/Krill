@@ -82,7 +82,8 @@ cpuWrite addr _ = execStateT (cpuRef addr )
 updateCBank :: StateT Display IO ()
 updateCBank = do
     display <- get
-    put display { dCBank = CB.tick ( dCBank display )}
+    bank' <- liftIO $ CB.tick ( dCBank display )
+    put display { dCBank = bank' }
 
 
 tick' :: StateT Display IO ()
@@ -97,9 +98,25 @@ tick = execStateT tick'
 -- Ptr should be a ptr holding 280 x 192 x 3 bytes of data, representing (R, G, B) values of a display of 280 x 192 pixels.
 updateVBuffer :: Display -> Ptr () -> IO ()
 updateVBuffer display rawBuffer = do
+    mapM_ (\y -> do
+        mapM_ (\x -> do
+            let char = fromIntegral $ mod (x + y * 40) 0xFF
+            drawChar display (x, y) char rawBuffer
+            ) [0..39]
+        ) [0..23]
+
+drawChar :: Display -> (Int, Int) -> Word8 -> Ptr () -> IO ()
+drawChar display (x, y) char rawBuffer = do
     let vBuffer = castPtr rawBuffer :: Ptr Word8
-    mapM_ (\idx -> do
-        byte <- randomIO :: IO Word8
-        poke (plusPtr vBuffer idx) byte
-        ) [0..(280 * 192 * 3)]
+    let start = 3 * (y * 280 * 8  + x * 7)
+    bytes <- CB.getChar (dCBank display) char
+    mapM_ (\h -> do
+        mapM_ (\w -> do
+            let offset = 3 * (280 * h + w)
+            let byte = (bytes !! w) !! h :: Word8
+            poke (plusPtr vBuffer (start + offset + 0)) byte
+            poke (plusPtr vBuffer (start + offset + 1)) byte
+            poke (plusPtr vBuffer (start + offset + 2)) byte
+            ) [0..6]
+        ) [0..7]
 

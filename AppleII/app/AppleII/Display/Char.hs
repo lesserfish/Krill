@@ -8,35 +8,36 @@ import Control.Monad (when)
 
 data CharacterBank = CharacterBank 
     {   bankRom :: Memory
-    ,   bankBlink :: Bool }
+    ,   bankBlink :: Bool
+    ,   bankCounter :: Int }
 
-data Character = CHR_AT
-               | CHR_A
-               | CHR_B
-               | CHR_C
-               | CHR_D
-               | CHR_E
-               | CHR_F
-               | CHR_G
-               | CHR_H
-               | CHR_I
-               | CHR_J
-               | CHR_K
-               | CHR_L
-               | CHR_M
-               | CHR_N
-               | CHR_O
-               | CHR_P
-               | CHR_Q
-               | CHR_R
-               | CHR_S
-               | CHR_T
-               | CHR_U
-               | CHR_V
-               | CHR_W
-               | CHR_X
-               | CHR_Y
-               | CHR_Z
+data Character = CHAR_AT
+               | CHAR_A
+               | CHAR_B
+               | CHAR_C
+               | CHAR_D
+               | CHAR_E
+               | CHAR_F
+               | CHAR_G
+               | CHAR_H
+               | CHAR_I
+               | CHAR_J
+               | CHAR_K
+               | CHAR_L
+               | CHAR_M
+               | CHAR_N
+               | CHAR_O
+               | CHAR_P
+               | CHAR_Q
+               | CHAR_R
+               | CHAR_S
+               | CHAR_T
+               | CHAR_U
+               | CHAR_V
+               | CHAR_W
+               | CHAR_X
+               | CHAR_Y
+               | CHAR_Z
                | CHAR_LBRACK
                | CHAR_ISLASH
                | CHAR_RBRACK
@@ -76,8 +77,8 @@ data Character = CHR_AT
                | CHAR_QUESTION
 
 data CharMod = CHAR_MOD_NORMAL
-          | CHAR_MOD_FLASHING
-          | CHAR_MOD_INVERTED
+             | CHAR_MOD_FLASHING
+             | CHAR_MOD_INVERTED
 
 
 
@@ -92,10 +93,14 @@ loadFont = do
 characterBank :: IO CharacterBank
 characterBank = do
     romData <- loadFont
-    return $ CharacterBank { bankRom = romData, bankBlink = False}
+    return $ CharacterBank { bankRom = romData, bankBlink = False, bankCounter = 0}
 
-tick :: CharacterBank -> CharacterBank
-tick cb = cb
+tick :: CharacterBank -> IO CharacterBank
+tick cb = do
+    let counter = bankCounter cb
+    -- TODO: Fix this magic number.
+    let cb' = if counter > 80000 then cb {bankCounter = 0, bankBlink = not (bankBlink cb)} else cb {bankCounter = bankCounter cb + 1 }
+    return cb'
 
 getChar :: CharacterBank -> Word8 -> IO [[Word8]]
 getChar bank charByte = getChar2 bank char cmod where
@@ -107,36 +112,45 @@ getChar2 bank char CHAR_MOD_INVERTED = map (map (0xFF - )) <$> getChar' bank cha
 getChar2 bank char CHAR_MOD_FLASHING = if bankBlink bank then map (map (0xFF - ) ) <$> getChar' bank char else getChar' bank char
 
 getChar' :: CharacterBank -> Character -> IO [[Word8]]
-getChar' bank char = undefined
+getChar' bank char = do
+    let rom = bankRom bank
+    let baseAddress = charAddress char
+    mapM (\x -> do
+        mapM (\y -> do
+            let address = fromIntegral (baseAddress + 8*x + y)
+            (\x -> 0xFF - x * 0xFF) <$> readByte rom address 
+            ) [0..7]
+        ) [0..6]
+
 
 parseByte :: Word8 -> (Character, CharMod)
-parseByte 0x00 = (CHR_AT             , CHAR_MOD_INVERTED)
-parseByte 0x01 = (CHR_A              , CHAR_MOD_INVERTED)
-parseByte 0x02 = (CHR_B              , CHAR_MOD_INVERTED)
-parseByte 0x03 = (CHR_C              , CHAR_MOD_INVERTED)
-parseByte 0x04 = (CHR_D              , CHAR_MOD_INVERTED)
-parseByte 0x05 = (CHR_E              , CHAR_MOD_INVERTED)
-parseByte 0x06 = (CHR_F              , CHAR_MOD_INVERTED)
-parseByte 0x07 = (CHR_G              , CHAR_MOD_INVERTED)
-parseByte 0x08 = (CHR_H              , CHAR_MOD_INVERTED)
-parseByte 0x09 = (CHR_I              , CHAR_MOD_INVERTED)
-parseByte 0x0A = (CHR_J              , CHAR_MOD_INVERTED)
-parseByte 0x0B = (CHR_K              , CHAR_MOD_INVERTED)
-parseByte 0x0C = (CHR_L              , CHAR_MOD_INVERTED)
-parseByte 0x0D = (CHR_M              , CHAR_MOD_INVERTED)
-parseByte 0x0E = (CHR_N              , CHAR_MOD_INVERTED)
-parseByte 0x0F = (CHR_O              , CHAR_MOD_INVERTED)
-parseByte 0x10 = (CHR_P              , CHAR_MOD_INVERTED)
-parseByte 0x11 = (CHR_Q              , CHAR_MOD_INVERTED)
-parseByte 0x12 = (CHR_R              , CHAR_MOD_INVERTED)
-parseByte 0x13 = (CHR_S              , CHAR_MOD_INVERTED)
-parseByte 0x14 = (CHR_T              , CHAR_MOD_INVERTED)
-parseByte 0x15 = (CHR_U              , CHAR_MOD_INVERTED)
-parseByte 0x16 = (CHR_V              , CHAR_MOD_INVERTED)
-parseByte 0x17 = (CHR_W              , CHAR_MOD_INVERTED)
-parseByte 0x18 = (CHR_X              , CHAR_MOD_INVERTED)
-parseByte 0x19 = (CHR_Y              , CHAR_MOD_INVERTED)
-parseByte 0x1A = (CHR_Z              , CHAR_MOD_INVERTED)
+parseByte 0x00 = (CHAR_AT             , CHAR_MOD_INVERTED)
+parseByte 0x01 = (CHAR_A              , CHAR_MOD_INVERTED)
+parseByte 0x02 = (CHAR_B              , CHAR_MOD_INVERTED)
+parseByte 0x03 = (CHAR_C              , CHAR_MOD_INVERTED)
+parseByte 0x04 = (CHAR_D              , CHAR_MOD_INVERTED)
+parseByte 0x05 = (CHAR_E              , CHAR_MOD_INVERTED)
+parseByte 0x06 = (CHAR_F              , CHAR_MOD_INVERTED)
+parseByte 0x07 = (CHAR_G              , CHAR_MOD_INVERTED)
+parseByte 0x08 = (CHAR_H              , CHAR_MOD_INVERTED)
+parseByte 0x09 = (CHAR_I              , CHAR_MOD_INVERTED)
+parseByte 0x0A = (CHAR_J              , CHAR_MOD_INVERTED)
+parseByte 0x0B = (CHAR_K              , CHAR_MOD_INVERTED)
+parseByte 0x0C = (CHAR_L              , CHAR_MOD_INVERTED)
+parseByte 0x0D = (CHAR_M              , CHAR_MOD_INVERTED)
+parseByte 0x0E = (CHAR_N              , CHAR_MOD_INVERTED)
+parseByte 0x0F = (CHAR_O              , CHAR_MOD_INVERTED)
+parseByte 0x10 = (CHAR_P              , CHAR_MOD_INVERTED)
+parseByte 0x11 = (CHAR_Q              , CHAR_MOD_INVERTED)
+parseByte 0x12 = (CHAR_R              , CHAR_MOD_INVERTED)
+parseByte 0x13 = (CHAR_S              , CHAR_MOD_INVERTED)
+parseByte 0x14 = (CHAR_T              , CHAR_MOD_INVERTED)
+parseByte 0x15 = (CHAR_U              , CHAR_MOD_INVERTED)
+parseByte 0x16 = (CHAR_V              , CHAR_MOD_INVERTED)
+parseByte 0x17 = (CHAR_W              , CHAR_MOD_INVERTED)
+parseByte 0x18 = (CHAR_X              , CHAR_MOD_INVERTED)
+parseByte 0x19 = (CHAR_Y              , CHAR_MOD_INVERTED)
+parseByte 0x1A = (CHAR_Z              , CHAR_MOD_INVERTED)
 parseByte 0x1B = (CHAR_LBRACK        , CHAR_MOD_INVERTED)
 parseByte 0x1C = (CHAR_ISLASH        , CHAR_MOD_INVERTED)
 parseByte 0x1D = (CHAR_RBRACK        , CHAR_MOD_INVERTED)
@@ -175,33 +189,33 @@ parseByte 0x3D = (CHAR_EQ            , CHAR_MOD_INVERTED)
 parseByte 0x3E = (CHAR_GT            , CHAR_MOD_INVERTED)
 parseByte 0x3F = (CHAR_QUESTION      , CHAR_MOD_INVERTED)
 
-parseByte 0x40 = (CHR_AT             , CHAR_MOD_FLASHING)
-parseByte 0x41 = (CHR_A              , CHAR_MOD_FLASHING)
-parseByte 0x42 = (CHR_B              , CHAR_MOD_FLASHING)
-parseByte 0x43 = (CHR_C              , CHAR_MOD_FLASHING)
-parseByte 0x44 = (CHR_D              , CHAR_MOD_FLASHING)
-parseByte 0x45 = (CHR_E              , CHAR_MOD_FLASHING)
-parseByte 0x46 = (CHR_F              , CHAR_MOD_FLASHING)
-parseByte 0x47 = (CHR_G              , CHAR_MOD_FLASHING)
-parseByte 0x48 = (CHR_H              , CHAR_MOD_FLASHING)
-parseByte 0x49 = (CHR_I              , CHAR_MOD_FLASHING)
-parseByte 0x4A = (CHR_J              , CHAR_MOD_FLASHING)
-parseByte 0x4B = (CHR_K              , CHAR_MOD_FLASHING)
-parseByte 0x4C = (CHR_L              , CHAR_MOD_FLASHING)
-parseByte 0x4D = (CHR_M              , CHAR_MOD_FLASHING)
-parseByte 0x4E = (CHR_N              , CHAR_MOD_FLASHING)
-parseByte 0x4F = (CHR_O              , CHAR_MOD_FLASHING)
-parseByte 0x50 = (CHR_P              , CHAR_MOD_FLASHING)
-parseByte 0x51 = (CHR_Q              , CHAR_MOD_FLASHING)
-parseByte 0x52 = (CHR_R              , CHAR_MOD_FLASHING)
-parseByte 0x53 = (CHR_S              , CHAR_MOD_FLASHING)
-parseByte 0x54 = (CHR_T              , CHAR_MOD_FLASHING)
-parseByte 0x55 = (CHR_U              , CHAR_MOD_FLASHING)
-parseByte 0x56 = (CHR_V              , CHAR_MOD_FLASHING)
-parseByte 0x57 = (CHR_W              , CHAR_MOD_FLASHING)
-parseByte 0x58 = (CHR_X              , CHAR_MOD_FLASHING)
-parseByte 0x59 = (CHR_Y              , CHAR_MOD_FLASHING)
-parseByte 0x5A = (CHR_Z              , CHAR_MOD_FLASHING)
+parseByte 0x40 = (CHAR_AT             , CHAR_MOD_FLASHING)
+parseByte 0x41 = (CHAR_A              , CHAR_MOD_FLASHING)
+parseByte 0x42 = (CHAR_B              , CHAR_MOD_FLASHING)
+parseByte 0x43 = (CHAR_C              , CHAR_MOD_FLASHING)
+parseByte 0x44 = (CHAR_D              , CHAR_MOD_FLASHING)
+parseByte 0x45 = (CHAR_E              , CHAR_MOD_FLASHING)
+parseByte 0x46 = (CHAR_F              , CHAR_MOD_FLASHING)
+parseByte 0x47 = (CHAR_G              , CHAR_MOD_FLASHING)
+parseByte 0x48 = (CHAR_H              , CHAR_MOD_FLASHING)
+parseByte 0x49 = (CHAR_I              , CHAR_MOD_FLASHING)
+parseByte 0x4A = (CHAR_J              , CHAR_MOD_FLASHING)
+parseByte 0x4B = (CHAR_K              , CHAR_MOD_FLASHING)
+parseByte 0x4C = (CHAR_L              , CHAR_MOD_FLASHING)
+parseByte 0x4D = (CHAR_M              , CHAR_MOD_FLASHING)
+parseByte 0x4E = (CHAR_N              , CHAR_MOD_FLASHING)
+parseByte 0x4F = (CHAR_O              , CHAR_MOD_FLASHING)
+parseByte 0x50 = (CHAR_P              , CHAR_MOD_FLASHING)
+parseByte 0x51 = (CHAR_Q              , CHAR_MOD_FLASHING)
+parseByte 0x52 = (CHAR_R              , CHAR_MOD_FLASHING)
+parseByte 0x53 = (CHAR_S              , CHAR_MOD_FLASHING)
+parseByte 0x54 = (CHAR_T              , CHAR_MOD_FLASHING)
+parseByte 0x55 = (CHAR_U              , CHAR_MOD_FLASHING)
+parseByte 0x56 = (CHAR_V              , CHAR_MOD_FLASHING)
+parseByte 0x57 = (CHAR_W              , CHAR_MOD_FLASHING)
+parseByte 0x58 = (CHAR_X              , CHAR_MOD_FLASHING)
+parseByte 0x59 = (CHAR_Y              , CHAR_MOD_FLASHING)
+parseByte 0x5A = (CHAR_Z              , CHAR_MOD_FLASHING)
 parseByte 0x5B = (CHAR_LBRACK        , CHAR_MOD_FLASHING)
 parseByte 0x5C = (CHAR_ISLASH        , CHAR_MOD_FLASHING)
 parseByte 0x5D = (CHAR_RBRACK        , CHAR_MOD_FLASHING)
@@ -240,33 +254,33 @@ parseByte 0x7D = (CHAR_EQ            , CHAR_MOD_FLASHING)
 parseByte 0x7E = (CHAR_GT            , CHAR_MOD_FLASHING)
 parseByte 0x7F = (CHAR_QUESTION      , CHAR_MOD_FLASHING)
 
-parseByte 0x80 = (CHR_AT             , CHAR_MOD_NORMAL)
-parseByte 0x81 = (CHR_A              , CHAR_MOD_NORMAL)
-parseByte 0x82 = (CHR_B              , CHAR_MOD_NORMAL)
-parseByte 0x83 = (CHR_C              , CHAR_MOD_NORMAL)
-parseByte 0x84 = (CHR_D              , CHAR_MOD_NORMAL)
-parseByte 0x85 = (CHR_E              , CHAR_MOD_NORMAL)
-parseByte 0x86 = (CHR_F              , CHAR_MOD_NORMAL)
-parseByte 0x87 = (CHR_G              , CHAR_MOD_NORMAL)
-parseByte 0x88 = (CHR_H              , CHAR_MOD_NORMAL)
-parseByte 0x89 = (CHR_I              , CHAR_MOD_NORMAL)
-parseByte 0x8A = (CHR_J              , CHAR_MOD_NORMAL)
-parseByte 0x8B = (CHR_K              , CHAR_MOD_NORMAL)
-parseByte 0x8C = (CHR_L              , CHAR_MOD_NORMAL)
-parseByte 0x8D = (CHR_M              , CHAR_MOD_NORMAL)
-parseByte 0x8E = (CHR_N              , CHAR_MOD_NORMAL)
-parseByte 0x8F = (CHR_O              , CHAR_MOD_NORMAL)
-parseByte 0x90 = (CHR_P              , CHAR_MOD_NORMAL)
-parseByte 0x91 = (CHR_Q              , CHAR_MOD_NORMAL)
-parseByte 0x92 = (CHR_R              , CHAR_MOD_NORMAL)
-parseByte 0x93 = (CHR_S              , CHAR_MOD_NORMAL)
-parseByte 0x94 = (CHR_T              , CHAR_MOD_NORMAL)
-parseByte 0x95 = (CHR_U              , CHAR_MOD_NORMAL)
-parseByte 0x96 = (CHR_V              , CHAR_MOD_NORMAL)
-parseByte 0x97 = (CHR_W              , CHAR_MOD_NORMAL)
-parseByte 0x98 = (CHR_X              , CHAR_MOD_NORMAL)
-parseByte 0x99 = (CHR_Y              , CHAR_MOD_NORMAL)
-parseByte 0x9A = (CHR_Z              , CHAR_MOD_NORMAL)
+parseByte 0x80 = (CHAR_AT             , CHAR_MOD_NORMAL)
+parseByte 0x81 = (CHAR_A              , CHAR_MOD_NORMAL)
+parseByte 0x82 = (CHAR_B              , CHAR_MOD_NORMAL)
+parseByte 0x83 = (CHAR_C              , CHAR_MOD_NORMAL)
+parseByte 0x84 = (CHAR_D              , CHAR_MOD_NORMAL)
+parseByte 0x85 = (CHAR_E              , CHAR_MOD_NORMAL)
+parseByte 0x86 = (CHAR_F              , CHAR_MOD_NORMAL)
+parseByte 0x87 = (CHAR_G              , CHAR_MOD_NORMAL)
+parseByte 0x88 = (CHAR_H              , CHAR_MOD_NORMAL)
+parseByte 0x89 = (CHAR_I              , CHAR_MOD_NORMAL)
+parseByte 0x8A = (CHAR_J              , CHAR_MOD_NORMAL)
+parseByte 0x8B = (CHAR_K              , CHAR_MOD_NORMAL)
+parseByte 0x8C = (CHAR_L              , CHAR_MOD_NORMAL)
+parseByte 0x8D = (CHAR_M              , CHAR_MOD_NORMAL)
+parseByte 0x8E = (CHAR_N              , CHAR_MOD_NORMAL)
+parseByte 0x8F = (CHAR_O              , CHAR_MOD_NORMAL)
+parseByte 0x90 = (CHAR_P              , CHAR_MOD_NORMAL)
+parseByte 0x91 = (CHAR_Q              , CHAR_MOD_NORMAL)
+parseByte 0x92 = (CHAR_R              , CHAR_MOD_NORMAL)
+parseByte 0x93 = (CHAR_S              , CHAR_MOD_NORMAL)
+parseByte 0x94 = (CHAR_T              , CHAR_MOD_NORMAL)
+parseByte 0x95 = (CHAR_U              , CHAR_MOD_NORMAL)
+parseByte 0x96 = (CHAR_V              , CHAR_MOD_NORMAL)
+parseByte 0x97 = (CHAR_W              , CHAR_MOD_NORMAL)
+parseByte 0x98 = (CHAR_X              , CHAR_MOD_NORMAL)
+parseByte 0x99 = (CHAR_Y              , CHAR_MOD_NORMAL)
+parseByte 0x9A = (CHAR_Z              , CHAR_MOD_NORMAL)
 parseByte 0x9B = (CHAR_LBRACK        , CHAR_MOD_NORMAL)
 parseByte 0x9C = (CHAR_ISLASH        , CHAR_MOD_NORMAL)
 parseByte 0x9D = (CHAR_RBRACK        , CHAR_MOD_NORMAL)
@@ -306,33 +320,33 @@ parseByte 0xBE = (CHAR_GT            , CHAR_MOD_NORMAL)
 parseByte 0xBF = (CHAR_QUESTION      , CHAR_MOD_NORMAL)
 
 -- Check this. I'm not certain what happens here.
-parseByte 0xC0 = (CHR_AT             , CHAR_MOD_NORMAL)
-parseByte 0xC1 = (CHR_A              , CHAR_MOD_NORMAL)
-parseByte 0xC2 = (CHR_B              , CHAR_MOD_NORMAL)
-parseByte 0xC3 = (CHR_C              , CHAR_MOD_NORMAL)
-parseByte 0xC4 = (CHR_D              , CHAR_MOD_NORMAL)
-parseByte 0xC5 = (CHR_E              , CHAR_MOD_NORMAL)
-parseByte 0xC6 = (CHR_F              , CHAR_MOD_NORMAL)
-parseByte 0xC7 = (CHR_G              , CHAR_MOD_NORMAL)
-parseByte 0xC8 = (CHR_H              , CHAR_MOD_NORMAL)
-parseByte 0xC9 = (CHR_I              , CHAR_MOD_NORMAL)
-parseByte 0xCA = (CHR_J              , CHAR_MOD_NORMAL)
-parseByte 0xCB = (CHR_K              , CHAR_MOD_NORMAL)
-parseByte 0xCC = (CHR_L              , CHAR_MOD_NORMAL)
-parseByte 0xCD = (CHR_M              , CHAR_MOD_NORMAL)
-parseByte 0xCE = (CHR_N              , CHAR_MOD_NORMAL)
-parseByte 0xCF = (CHR_O              , CHAR_MOD_NORMAL)
-parseByte 0xD0 = (CHR_P              , CHAR_MOD_NORMAL)
-parseByte 0xD1 = (CHR_Q              , CHAR_MOD_NORMAL)
-parseByte 0xD2 = (CHR_R              , CHAR_MOD_NORMAL)
-parseByte 0xD3 = (CHR_S              , CHAR_MOD_NORMAL)
-parseByte 0xD4 = (CHR_T              , CHAR_MOD_NORMAL)
-parseByte 0xD5 = (CHR_U              , CHAR_MOD_NORMAL)
-parseByte 0xD6 = (CHR_V              , CHAR_MOD_NORMAL)
-parseByte 0xD7 = (CHR_W              , CHAR_MOD_NORMAL)
-parseByte 0xD8 = (CHR_X              , CHAR_MOD_NORMAL)
-parseByte 0xD9 = (CHR_Y              , CHAR_MOD_NORMAL)
-parseByte 0xDA = (CHR_Z              , CHAR_MOD_NORMAL)
+parseByte 0xC0 = (CHAR_AT             , CHAR_MOD_NORMAL)
+parseByte 0xC1 = (CHAR_A              , CHAR_MOD_NORMAL)
+parseByte 0xC2 = (CHAR_B              , CHAR_MOD_NORMAL)
+parseByte 0xC3 = (CHAR_C              , CHAR_MOD_NORMAL)
+parseByte 0xC4 = (CHAR_D              , CHAR_MOD_NORMAL)
+parseByte 0xC5 = (CHAR_E              , CHAR_MOD_NORMAL)
+parseByte 0xC6 = (CHAR_F              , CHAR_MOD_NORMAL)
+parseByte 0xC7 = (CHAR_G              , CHAR_MOD_NORMAL)
+parseByte 0xC8 = (CHAR_H              , CHAR_MOD_NORMAL)
+parseByte 0xC9 = (CHAR_I              , CHAR_MOD_NORMAL)
+parseByte 0xCA = (CHAR_J              , CHAR_MOD_NORMAL)
+parseByte 0xCB = (CHAR_K              , CHAR_MOD_NORMAL)
+parseByte 0xCC = (CHAR_L              , CHAR_MOD_NORMAL)
+parseByte 0xCD = (CHAR_M              , CHAR_MOD_NORMAL)
+parseByte 0xCE = (CHAR_N              , CHAR_MOD_NORMAL)
+parseByte 0xCF = (CHAR_O              , CHAR_MOD_NORMAL)
+parseByte 0xD0 = (CHAR_P              , CHAR_MOD_NORMAL)
+parseByte 0xD1 = (CHAR_Q              , CHAR_MOD_NORMAL)
+parseByte 0xD2 = (CHAR_R              , CHAR_MOD_NORMAL)
+parseByte 0xD3 = (CHAR_S              , CHAR_MOD_NORMAL)
+parseByte 0xD4 = (CHAR_T              , CHAR_MOD_NORMAL)
+parseByte 0xD5 = (CHAR_U              , CHAR_MOD_NORMAL)
+parseByte 0xD6 = (CHAR_V              , CHAR_MOD_NORMAL)
+parseByte 0xD7 = (CHAR_W              , CHAR_MOD_NORMAL)
+parseByte 0xD8 = (CHAR_X              , CHAR_MOD_NORMAL)
+parseByte 0xD9 = (CHAR_Y              , CHAR_MOD_NORMAL)
+parseByte 0xDA = (CHAR_Z              , CHAR_MOD_NORMAL)
 parseByte 0xDB = (CHAR_LBRACK        , CHAR_MOD_NORMAL)
 parseByte 0xDC = (CHAR_ISLASH        , CHAR_MOD_NORMAL)
 parseByte 0xDD = (CHAR_RBRACK        , CHAR_MOD_NORMAL)
@@ -374,33 +388,33 @@ parseByte 0xFF = (CHAR_QUESTION      , CHAR_MOD_NORMAL)
 
 -- Position of char in ROM
 charAddress :: Character -> Int
-charAddress CHR_AT            = 0x00 * 7 * 8
-charAddress CHR_A             = 0x01 * 7 * 8
-charAddress CHR_B             = 0x02 * 7 * 8
-charAddress CHR_C             = 0x03 * 7 * 8
-charAddress CHR_D             = 0x04 * 7 * 8
-charAddress CHR_E             = 0x05 * 7 * 8
-charAddress CHR_F             = 0x06 * 7 * 8
-charAddress CHR_G             = 0x07 * 7 * 8
-charAddress CHR_H             = 0x08 * 7 * 8
-charAddress CHR_I             = 0x09 * 7 * 8
-charAddress CHR_J             = 0x0A * 7 * 8
-charAddress CHR_K             = 0x0B * 7 * 8
-charAddress CHR_L             = 0x0C * 7 * 8
-charAddress CHR_M             = 0x0D * 7 * 8
-charAddress CHR_N             = 0x0E * 7 * 8
-charAddress CHR_O             = 0x0F * 7 * 8
-charAddress CHR_P             = 0x10 * 7 * 8
-charAddress CHR_Q             = 0x11 * 7 * 8
-charAddress CHR_R             = 0x12 * 7 * 8
-charAddress CHR_S             = 0x13 * 7 * 8
-charAddress CHR_T             = 0x14 * 7 * 8
-charAddress CHR_U             = 0x15 * 7 * 8
-charAddress CHR_V             = 0x16 * 7 * 8
-charAddress CHR_W             = 0x17 * 7 * 8
-charAddress CHR_X             = 0x18 * 7 * 8
-charAddress CHR_Y             = 0x19 * 7 * 8
-charAddress CHR_Z             = 0x1A * 7 * 8
+charAddress CHAR_AT            = 0x00 * 7 * 8
+charAddress CHAR_A             = 0x01 * 7 * 8
+charAddress CHAR_B             = 0x02 * 7 * 8
+charAddress CHAR_C             = 0x03 * 7 * 8
+charAddress CHAR_D             = 0x04 * 7 * 8
+charAddress CHAR_E             = 0x05 * 7 * 8
+charAddress CHAR_F             = 0x06 * 7 * 8
+charAddress CHAR_G             = 0x07 * 7 * 8
+charAddress CHAR_H             = 0x08 * 7 * 8
+charAddress CHAR_I             = 0x09 * 7 * 8
+charAddress CHAR_J             = 0x0A * 7 * 8
+charAddress CHAR_K             = 0x0B * 7 * 8
+charAddress CHAR_L             = 0x0C * 7 * 8
+charAddress CHAR_M             = 0x0D * 7 * 8
+charAddress CHAR_N             = 0x0E * 7 * 8
+charAddress CHAR_O             = 0x0F * 7 * 8
+charAddress CHAR_P             = 0x10 * 7 * 8
+charAddress CHAR_Q             = 0x11 * 7 * 8
+charAddress CHAR_R             = 0x12 * 7 * 8
+charAddress CHAR_S             = 0x13 * 7 * 8
+charAddress CHAR_T             = 0x14 * 7 * 8
+charAddress CHAR_U             = 0x15 * 7 * 8
+charAddress CHAR_V             = 0x16 * 7 * 8
+charAddress CHAR_W             = 0x17 * 7 * 8
+charAddress CHAR_X             = 0x18 * 7 * 8
+charAddress CHAR_Y             = 0x19 * 7 * 8
+charAddress CHAR_Z             = 0x1A * 7 * 8
 charAddress CHAR_LBRACK       = 0x1B * 7 * 8
 charAddress CHAR_ISLASH       = 0x1C * 7 * 8
 charAddress CHAR_RBRACK       = 0x1D * 7 * 8

@@ -16,7 +16,7 @@ data AppleII = AppleII {
     ,   applKeyboard  :: IORef KB.Keyboard
     ,   applRAM       :: M.Memory
     ,   applBIOS      :: M.Memory
-    ,   applDisplay   :: D.Display
+    ,   applDisplay   :: IORef D.Display
 }
 
 
@@ -48,6 +48,13 @@ appleInterface apple = K6502.Interface r w p where
     w = cpuWriteByte apple
     p = r
 
+tickDisplay :: AppleII -> IO ()
+tickDisplay apple = do
+    display <- readIORef (applDisplay apple)
+    display' <- D.tick display
+    writeIORef (applDisplay apple) display'
+
+
 tick :: AppleII -> IO()
 tick apple = do
     -- Tick CPU
@@ -56,6 +63,7 @@ tick apple = do
     writeIORef (applCPU apple) cpu'
     -- Tick Cassette
     -- Tick Display
+    tickDisplay apple
 
 tickN :: Int -> AppleII -> IO ()
 tickN n apple = do
@@ -73,11 +81,13 @@ new bios cassette = do
     kb <- KB.new >>= newIORef
     ram <- M.fromList M.ReadAccess (replicate 0x1000 0 ++ cassette)
     rom <- M.fromList M.ReadOnly bios
-    display <- D.initialize ram
+    display <- D.initialize ram >>= newIORef
     return $ AppleII {applCPU = cpu, applKeyboard = kb, applRAM = ram, applBIOS = rom, applDisplay = display}
 
 updateVBuffer :: AppleII -> Ptr() -> IO()
-updateVBuffer apple = D.updateVBuffer (applDisplay apple)
+updateVBuffer apple rawBuffer = do
+    display <- readIORef (applDisplay apple)
+    D.updateVBuffer display rawBuffer
 
 sendKey :: AppleII -> Word8 -> IO ()
 sendKey apple byte = do
