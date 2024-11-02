@@ -15,6 +15,8 @@ import Foreign.Ptr
 import Foreign.Storable
 import Data.Word
 import System.Random (randomIO)
+import qualified AppleII.Display.Blocks as Blocks
+import SDL (paletteColor)
 
 data GraphicsMode = GRAPHICS_LORES
                   | GRAPHICS_HIRES
@@ -36,6 +38,7 @@ data Display = Display
     ,   dGraphicsMode :: GraphicsMode
     ,   dLayout :: Layout
     ,   dCBank :: CB.CharacterBank
+    ,   dPalette :: Memory
     }
 
 initialize :: Memory -> IO Display
@@ -45,12 +48,14 @@ initialize ram = do
     let graphicsMode = GRAPHICS_LORES
     let layout = LAYOUT_PURE
     cBank <- CB.characterBank
+    palette <- Blocks.loadPalette
     return $ Display { dRAM = ram
                      , dDisplayMode = displayMode
                      , dPage = page
                      , dGraphicsMode = graphicsMode
                      , dLayout = layout
-                     , dCBank = cBank }
+                     , dCBank = cBank 
+                     , dPalette = palette }
 
 
 cpuRef :: Word16 -> StateT Display IO ()
@@ -138,7 +143,7 @@ drawBlock :: Display -> (Int, Int) -> Word8 -> Ptr () -> IO ()
 drawBlock display (x, y) colByte rawBuffer = do
     let vBuffer = castPtr rawBuffer :: Ptr Word8
     let start = 3 * (y * 280 * 8  + x * 7)
-    let bytes = Blocks.getBlock colByte
+    bytes <- Blocks.getBlock (dPalette display) colByte
     mapM_ (\h -> do
         mapM_ (\w -> do
             let offset = 3 * (280 * h + w)

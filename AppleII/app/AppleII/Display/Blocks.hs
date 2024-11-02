@@ -1,10 +1,16 @@
 module AppleII.Display.Blocks ( 
   RGB
 , getBlock
+, loadPalette
 )where
 
 import Data.Word
 import Data.Bits
+import qualified Data.ByteString as B
+import AppleII.Memory
+import Paths_AppleII (getDataFileName)
+import SDL.Raw (readBE16)
+import Control.Monad (when)
 
 type RGB = (Word8, Word8, Word8)
 
@@ -23,34 +29,42 @@ data COLOR = COL_BLACK
            | COL_LIGHT_GREEN
            | COL_YELLOW
            | COL_AQUAMARINE
-           | COL_WHITE
+           | COL_WHITE         
 
+readPalette :: Memory -> Int -> IO RGB
+readPalette palette idx = do
+    let baseAddress = fromIntegral $ idx * 3
+    r <- readByte palette (baseAddress + 0)
+    g <- readByte palette (baseAddress + 1)
+    b <- readByte palette (baseAddress + 2)
+    return (r, g, b)
 
-toRGB :: COLOR -> RGB
-toRGB COL_BLACK       = (  0,   0,   0)
-toRGB COL_MAGENTA     = (221,   0,  51)
-toRGB COL_DARK_BLUE   = (  0,   0, 153)
-toRGB COL_PURPLE      = (221,  34, 221)
-toRGB COL_GREEN       = (  0, 119,  34)
-toRGB COL_GREY_1      = ( 85,  85,  85)
-toRGB COL_MEDIUM_BLUE = ( 34,  34, 255)
-toRGB COL_LIGHT_BLUE  = (102, 170, 255)
-toRGB COL_BROWN       = (136,  85,   0)
-toRGB COL_ORANGE      = (255, 102,   0)
-toRGB COL_GREY_2      = (170, 170, 170)
-toRGB COL_PINK        = (255, 153, 136)
-toRGB COL_LIGHT_GREEN = ( 17, 221,   0)
-toRGB COL_YELLOW      = (255, 255,   0)
-toRGB COL_AQUAMARINE  = ( 68, 255, 153)
-toRGB COL_WHITE       = (255, 255, 255)
+toRGB :: Memory -> COLOR -> IO RGB
+toRGB palette COL_BLACK       = readPalette palette 0 
+toRGB palette COL_MAGENTA     = readPalette palette 1 
+toRGB palette COL_DARK_BLUE   = readPalette palette 2 
+toRGB palette COL_PURPLE      = readPalette palette 3 
+toRGB palette COL_GREEN       = readPalette palette 4 
+toRGB palette COL_GREY_1      = readPalette palette 5 
+toRGB palette COL_MEDIUM_BLUE = readPalette palette 6 
+toRGB palette COL_LIGHT_BLUE  = readPalette palette 7 
+toRGB palette COL_BROWN       = readPalette palette 8 
+toRGB palette COL_ORANGE      = readPalette palette 9 
+toRGB palette COL_GREY_2      = readPalette palette 10 
+toRGB palette COL_PINK        = readPalette palette 11 
+toRGB palette COL_LIGHT_GREEN = readPalette palette 12 
+toRGB palette COL_YELLOW      = readPalette palette 13 
+toRGB palette COL_AQUAMARINE  = readPalette palette 14 
+toRGB palette COL_WHITE       = readPalette palette 15 
 
-getBlock :: Word8 -> [[RGB]]
-getBlock byte =  upperBlock ++ lowerBlock where
-    (upperColor, lowerColor) = parseByte byte
-    upperLine = replicate 7 (toRGB upperColor)
-    lowerLine = replicate 7 (toRGB lowerColor)
-    upperBlock = replicate 4 upperLine
-    lowerBlock = replicate 4 lowerLine
+getBlock :: Memory -> Word8 -> IO [[RGB]]
+getBlock palette byte =  do
+    let (upperColor, lowerColor) = parseByte byte
+    upperLine <- replicate 7 <$> toRGB palette upperColor
+    lowerLine <- replicate 7 <$> toRGB palette lowerColor
+    let upperBlock = replicate 4 upperLine
+    let lowerBlock = replicate 4 lowerLine
+    return $ upperBlock ++ lowerBlock
 
 parseByte :: Word8 -> (COLOR, COLOR)
 parseByte byte = (upperColor, lowerColor) where
@@ -75,3 +89,11 @@ parseNibble 0xD = COL_YELLOW
 parseNibble 0xE = COL_AQUAMARINE
 parseNibble 0xF = COL_WHITE
 parseNibble _ = COL_BLACK
+
+loadPalette :: IO Memory
+loadPalette = do
+    let expectedRomSize = 16 * 3
+    filepath <- getDataFileName "Assets/palette.bin"
+    romData <- B.unpack <$> B.readFile filepath :: IO [Word8]
+    when (expectedRomSize /= length romData) $ error "Palette ROM has incorrect size"
+    fromList ReadOnly romData
