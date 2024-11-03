@@ -389,6 +389,7 @@ parseByte 0xFC = (CHAR_LT            , CHAR_MOD_NORMAL)
 parseByte 0xFD = (CHAR_EQ            , CHAR_MOD_NORMAL)
 parseByte 0xFE = (CHAR_GT            , CHAR_MOD_NORMAL)
 parseByte 0xFF = (CHAR_QUESTION      , CHAR_MOD_NORMAL)
+parseByte _ = error "Undefined byte in parseByte"
 
 
 -- Position of char in ROM

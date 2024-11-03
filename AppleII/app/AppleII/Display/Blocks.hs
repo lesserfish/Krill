@@ -9,7 +9,6 @@ import Data.Bits
 import qualified Data.ByteString as B
 import AppleII.Memory
 import Paths_AppleII (getDataFileName)
-import SDL.Raw (readBE16)
 import Control.Monad (when)
 
 type RGB = (Word8, Word8, Word8)

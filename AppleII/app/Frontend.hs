@@ -4,12 +4,11 @@ module Frontend where
 
 import SDL hiding (get)
 import Foreign.C.Types (CInt)
-import Foreign.Storable
-import Foreign.Ptr
 import Control.Monad.State
 import Control.Monad
 import Data.Word
 import qualified AppleII.Bus as Apple
+import Frontend.KeyASCII 
 
 _CHAR_WIDTH :: CInt 
 _CHAR_WIDTH = 16
@@ -53,16 +52,6 @@ updateVBuffer = do
     liftIO $ Apple.updateVBuffer appl rawBuffer
     unlockTexture vTexture
 
-debugVBuffer :: StateT Context IO()
-debugVBuffer = do
-    vTexture <- gets videoTexture
-    (rawBuffer, _) <- lockTexture vTexture Nothing
-    let vBuffer = castPtr rawBuffer :: Ptr Word8
-    liftIO $ mapM_ (\idx -> do
-        pix <- peek (plusPtr vBuffer idx) :: IO Word8
-        putStr $ show pix) [0..20]
-    liftIO $ putStrLn ""
-
 renderVBuffer :: StateT Context IO ()
 renderVBuffer = do
     renderer <- gets sdlRenderer
@@ -75,6 +64,10 @@ sendKey :: Word8 -> StateT Context IO ()
 sendKey _ = do
     return ()
 
+specialKey :: Keycode -> StateT Context IO ()
+specialKey KeycodeF12 = reset
+specialKey _ = return ()
+
 exitProgram :: StateT Context IO ()
 exitProgram = modify (\ctx -> ctx{exitRequest = True})
 
@@ -85,8 +78,15 @@ reset = do
 handleKeyboard :: SDL.KeyboardEventData -> StateT Context IO ()
 handleKeyboard ke = do
     when (keyboardEventKeyMotion ke == Pressed) (do
-            case keysymKeycode . keyboardEventKeysym $ ke of
-                _ -> return ()
+            modState <- getModState
+            let ctrl = keyModifierLeftCtrl modState || keyModifierRightCtrl modState
+            let shift = keyModifierLeftShift modState || keyModifierRightShift modState
+            let kmod = keyMod (ctrl, shift)
+            let key = keysymKeycode . keyboardEventKeysym $ ke
+            let maybeByte = keyASCII kmod key
+            case maybeByte of
+                Nothing -> specialKey key
+                Just byte -> sendKey (fromIntegral byte)
         )
 handleEvents :: SDL.Event -> StateT Context IO ()
 handleEvents e = do
