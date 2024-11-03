@@ -14,9 +14,6 @@ import Control.Monad.State
 import Foreign.Ptr
 import Foreign.Storable
 import Data.Word
-import System.Random (randomIO)
-import qualified AppleII.Display.Blocks as Blocks
-import SDL (paletteColor)
 
 data GraphicsMode = GRAPHICS_LORES
                   | GRAPHICS_HIRES
@@ -101,9 +98,8 @@ tick = execStateT tick'
 
 -- Rendering methods
 
--- Ptr should be a ptr holding 280 x 192 x 3 bytes of data, representing (R, G, B) values of a display of 280 x 192 pixels.
-updateVBuffer1 :: Display -> Ptr () -> IO ()
-updateVBuffer1 display rawBuffer = do
+charDemo :: Display -> Ptr () -> IO ()
+charDemo display rawBuffer = do
     mapM_ (\y -> do
         mapM_ (\x -> do
             let char = fromIntegral $ mod (x + y * 40) 0xFF
@@ -111,8 +107,8 @@ updateVBuffer1 display rawBuffer = do
             ) [0..39]
         ) [0..23]
 
-updateVBuffer2 :: Display -> Ptr () -> IO ()
-updateVBuffer2 display rawBuffer = do
+colorDemo :: Display -> Ptr () -> IO ()
+colorDemo display rawBuffer = do
     mapM_ (\y -> do
         mapM_ (\x -> do
             let col = fromIntegral $ mod (x + y * 40) 0xFF
@@ -120,9 +116,60 @@ updateVBuffer2 display rawBuffer = do
             ) [0..39]
         ) [0..23]
 
+pageBase :: Page -> Int
+pageBase PAGE_PRIMARY = 0x400
+pageBase PAGE_SECONDARY = 0x800
 
+-- Ptr should be a ptr holding 280 x 192 x 3 bytes of data, representing (R, G, B) values of a display of 280 x 192 pixels.
 updateVBuffer :: Display -> Ptr () -> IO ()
-updateVBuffer = updateVBuffer2
+updateVBuffer display rawBuffer = do
+    let graphicsMode  = dGraphicsMode display
+    case graphicsMode of
+        GRAPHICS_HIRES -> hiResRender display rawBuffer 
+        GRAPHICS_LORES -> loResRender display rawBuffer
+
+loResRender :: Display -> Ptr () -> IO ()
+loResRender display rawBuffer = do
+    let layout = dLayout display
+    let displayMode = dDisplayMode display
+    let page = dPage display
+    let upperRenderer = case layout of
+            LAYOUT_MIXED -> drawBlock
+            LAYOUT_PURE -> case displayMode of
+                MODE_GRAPHICS -> drawBlock
+                MODE_TEXT -> drawChar
+    let lowerRenderer = case layout of
+            LAYOUT_MIXED -> drawChar
+            LAYOUT_PURE -> case displayMode of
+                MODE_GRAPHICS -> drawBlock
+                MODE_TEXT -> drawChar
+
+    let baseAddress = fromIntegral $ pageBase page :: Int
+
+    -- Render upper segment
+    mapM_ (\y -> do
+        mapM_ (\x -> do
+            let offset = (loResMap !! y) !! x
+            let address = fromIntegral $ baseAddress + offset
+            byte <- readByte (dRAM display) address
+            upperRenderer display (x, y) byte rawBuffer
+            ) [0..39]
+        ) [0..19]
+    -- Render lower segment
+    mapM_ (\y -> do
+        mapM_ (\x -> do
+            let offset = (loResMap !! y) !! x
+            let address = fromIntegral $ baseAddress + offset
+            byte <- readByte (dRAM display) address
+            lowerRenderer display (x, y) byte rawBuffer
+            ) [0..39]
+        ) [20..23]
+
+hiResRender :: Display -> Ptr () -> IO ()
+hiResRender = undefined
+    
+
+-- Lo-Res drawing calls
 
 drawChar :: Display -> (Int, Int) -> Word8 -> Ptr () -> IO ()
 drawChar display (x, y) char rawBuffer = do
@@ -153,3 +200,14 @@ drawBlock display (x, y) colByte rawBuffer = do
             poke (plusPtr vBuffer (start + offset + 2)) b
             ) [0..6]
         ) [0..7]
+
+loResMap :: [[Int]]
+loResMap = [[base + offset | offset <- [0..39]] | base <- lineAddr ] where
+    lineAddr = [ 0x000 , 0x080 , 0x100 
+               , 0x180 , 0x200 , 0x280 
+               , 0x300 , 0x380 , 0x28 
+               , 0x0A8 , 0x128 , 0x1A8 
+               , 0x228 , 0x2A8 , 0x328 
+               , 0x3A8 , 0x050 , 0x0D0 
+               , 0x150 , 0x1D0 , 0x250
+               , 0x2D0 , 0x350 , 0x3D0 ]

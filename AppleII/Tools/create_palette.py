@@ -15,7 +15,7 @@ colors = [  0,   0,   0   #  COL_BLACK
          ,  17, 221,      #  COL_LIGHT_GREEN
          , 255, 255,      #  COL_YELLOW
          ,  68, 255, 15   #  COL_AQUAMARINE
-         , 255, 255, 25]  #  COL_WHITE         
+         , 255, 255, 25 ] #  COL_WHITE         
 
 
 

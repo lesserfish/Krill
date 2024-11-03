@@ -88,7 +88,6 @@ handleKeyboard ke = do
             case keysymKeycode . keyboardEventKeysym $ ke of
                 _ -> return ()
         )
-
 handleEvents :: SDL.Event -> StateT Context IO ()
 handleEvents e = do
     case SDL.eventPayload e of

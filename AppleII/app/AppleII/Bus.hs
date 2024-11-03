@@ -78,7 +78,7 @@ reset apple = do
 new :: [Word8] -> [Word8] -> IO AppleII
 new bios cassette = do
     cpu <- newIORef K6502.new
-    kb <- KB.new >>= newIORef
+    kb <- newIORef KB.new
     ram <- M.fromList M.ReadAccess (replicate 0x1000 0 ++ cassette)
     rom <- M.fromList M.ReadOnly bios
     display <- D.initialize ram >>= newIORef
@@ -92,6 +92,6 @@ updateVBuffer apple rawBuffer = do
 sendKey :: AppleII -> Word8 -> IO ()
 sendKey apple byte = do
     kb <- liftIO . readIORef . applKeyboard $ apple
-    kb' <- liftIO $ execStateT (KB.writeChar byte) kb
+    let kb' = KB.writeChar byte kb
     liftIO $ writeIORef (applKeyboard apple) kb'
 
